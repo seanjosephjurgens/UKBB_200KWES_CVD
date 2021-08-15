@@ -1,3 +1,5 @@
+#!/usr/bin/env Rscript
+
 ########################################################################
 # Functions for creating sparse kinship matrix and fitting nullmodels
 ########################################################################
