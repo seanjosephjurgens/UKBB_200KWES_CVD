@@ -1,4 +1,9 @@
+########################################################################
+# Functions for creating sparse kinship matrix and fitting nullmodels
+########################################################################
+
 source('GENESIS_adaptation_source.R')
+
 
 make_sparse_kinship_matrix <- function(KINGfile, famfile, sparse_cutoff=2^(-9/2), outfile_matrix, compute_unrel=FALSE, relat_cutoff=2^(-9/2), outfile_unrel){
 	
