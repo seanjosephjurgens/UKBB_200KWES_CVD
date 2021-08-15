@@ -1,8 +1,9 @@
 #!/usr/bin/env Rscript
 
-########################################################################
+######################################################################################
 # Functions for creating sparse kinship matrix and fitting nullmodels
-########################################################################
+# (These functions are also icluded in the source commit 'GENESIS_adaptation_source.R')
+######################################################################################
 
 source('GENESIS_adaptation_source.R')
 
