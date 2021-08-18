@@ -82,18 +82,20 @@ fit_nullmodel <- function(phenofile, ID_col, Outcome, IV_Rank_Norm=FALSE,
 	}
 	
 	if(is.null(relfile) | is.null(unrelfile)){
-		cat('\nWarning: kinship file and/or unrelated file have been specified as 'NULL', therefore independence of samples will be assumed at certain steps. This is okay if your samples are all unrelated.\n')
+		cat('\nWarning: kinship file and/or unrelated file have been specified as NULL, therefore independence of samples will be assumed at certain steps. This is okay if your samples are all unrelated.\n')
 	}
+	
+	if(!is.null(unrelfile)){
+		unrel <- fread(unrelfile, stringsAsFactors=F, data.table=F)
+		unrelphen<-phen1[which(phen1[,IDcol] %in% unrel$ID),]
+	}else{
+		unrelphen <- phen1
+	}
+	
 	
 	# select unrelated samples and test testable covariates to determine inclusion
 	assopcs <- NULL
 	if(!is.null(Test_Covars)){
-		if(!is.null(unrelfile)){
-			unrel <- fread(unrelfile, stringsAsFactors=F, data.table=F)
-			unrelphen<-phen1[which(phen1[,IDcol] %in% unrel$ID),]
-		}else{
-			unrelphen <- phen1
-		}
 		if(is.null(Fixed_Covars)){
 			# Make formula and find associated covariates for tested variables
 			form0<-as.formula(paste(Outcome, " ~ ", paste0(Test_Covars, collapse="+")))
@@ -114,6 +116,7 @@ fit_nullmodel <- function(phenofile, ID_col, Outcome, IV_Rank_Norm=FALSE,
 	covs <- unique(c(Fixed_Covars, assopcs))
 	cat('\nIncluded covariates:', covs, '\n')			  
 	
+	nullmod <- NULL 
 	#Kinship matrix and run nullmodel
 	if(!is.null(relfile)){
 		relmat<-get(load(relfile))
@@ -122,14 +125,18 @@ fit_nullmodel <- function(phenofile, ID_col, Outcome, IV_Rank_Norm=FALSE,
 		names(phen1)[which(colnames(phen1)==ID_col)]<-"scanID"
 		scanAnnot <- ScanAnnotationDataFrame(phen1)
 	
-		nullmod <- fitNullModel(scanAnnot, outcome = Outcome, covars = covs, cov.mat = relmat1, family=Model_type)
-	}else{
-		names(phen1)[which(colnames(phen1)==ID_col)]<-"scanID"
-		scanAnnot <- ScanAnnotationDataFrame(phen1)
-		
-		nullmod <- fitNullModel(scanAnnot, outcome = Outcome, covars = covs, cov.mat = NULL, family=Model_type)
+		# Try and run mixed model
+		try(nullmod <- fitNullModel(scanAnnot, outcome = Outcome, covars = covs, cov.mat = relmat1, family=Model_type))
 	}
-					  
+	
+	# If not run using mixed-model, or if failed using mixed-model: Run using standard linear regression
+	if(is.null(nullmod) | class(nullmod)!="GENESIS.nullMixedModel" | T %in% nullmod$zeroFLAG){
+		cat("WARNING: Failed fitting mixed nullmodel or nonconvergence mixed-model. Resorting to regular linear regression, using unrelated individuals if provided.\n")
+        	names(unrelphen)[which(colnames(unrelphen)==ID_col)]<-"scanID"
+		scanAnnot <- ScanAnnotationDataFrame(unrelphen)
+        	nullmod <- fitNullModel(scanAnnot, outcome = Outcome, covars = covs, cov.mat = NULL, family=Model_type)
+	}
+				  
 	save(nullmod,file=outfile)
 
 }	  
