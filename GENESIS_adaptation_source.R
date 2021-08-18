@@ -150,7 +150,7 @@ zeroImpute_Sean <- function(geno, freqz) {
         try(dimz <- nrowz*ncolz, silent=T)
 	      # If fail for overflow, use workaround
         if(!is.na(dimz)){
-		            if(dimz < 1500000000){
+		if(dimz < 1500000000){
                         miss.idx <- which(is.na(geno))
                         miss.var.idx <- ceiling(miss.idx/nrow(geno))
                         geno[miss.idx] <- 0
@@ -163,8 +163,8 @@ zeroImpute_Sean <- function(geno, freqz) {
                                 }
                         }
 
-		            }
-	      }else{
+		}
+	}else{
                 for(jk in c(1:ncol(geno))){
                         #cat('Busy with', jk, 'out of', ncol(geno), '...\n')
                         miss.rowz <- which(is.na(geno[,jk]))
@@ -172,8 +172,8 @@ zeroImpute_Sean <- function(geno, freqz) {
                                 geno[miss.rowz,jk] <- 0
                         }
                 }
-	      }
-	      geno
+	}
+	geno
 }
 
 #### Redefine meanImpute function to work for very large numbers of variants (for many variants, there is a glitch that causes it to error)
