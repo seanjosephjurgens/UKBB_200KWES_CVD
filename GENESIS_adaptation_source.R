@@ -884,6 +884,51 @@ make_sparse_kinship_matrix <- function(KINGfile, famfile, sparse_cutoff=2^(-9/2)
 	save(sparseMat, file=outfile)
 }
 
+fmake_sparse_kinship_matrix <- function(KINGfile, famfile, sparse_cutoff=2^(-9/2), outfile_matrix, compute_unrel=FALSE, relat_cutoff=2^(-9/2), outfile_unrel){
+	
+	#' KINGfile = string specifying the KING .kin0 file, which is produced when running KING2 to get pair-wise kinship estimates.
+	#'	      IDs should match the IDs in the genetic data.
+	#' famfile = string specifying the PLINK .fam for the genetic with sample IDs. 
+	#' sparse_cutoff = numeric indicating the preferred relatedness cutoff for the sparse matrix. Standard set at 2^(-9/2).
+	#' outfile_matrix = string specifying the preferred location for the output kinship matrix file.
+	#' compute_unrelated = logical indicating whether to make a .tsv file containing IDs of unrelated samples from the data.
+	#' outfile_unrelated = string specifying the preferred location for the output unrelated samples file
+	
+	king <- fread(KINGfile, stringsAsFactors=F, data.table=F, select=c("ID1", "ID2", "Kinship"))
+	colnames(king)[3] <- 'value'
+	fam <- fread(famfile, stringsAsFactors=F, data.table=F)
+	sample.id <- fam[,2]
+	
+	if(compute_unrel==TRUE){
+		relat <- king[king$value >= relat_cutoff,]
+		unrel_IDs <- removerelated(relat[,c(2,4)], fam[,1], random=FALSE, fixed=TRUE)
+		colnames(unrel_IDs) <- "ID"
+		write.table(unrel_IDs, file=outfile_unrel, col.names=T, row.names=F, quote=F, sep='\t')
+	}	
+	
+	# scale by 2 so the diagonal is 1 and all monozygotic pairs are 1
+	king$value <- king$value*2
+	class(king$ID1) <- 'character'
+	class(king$ID2) <- 'character'
+	
+	pheno <- fam[1:2]
+	colnames(pheno)[1] <- "ID1"
+	king <- merge(king, pheno, by="ID1", all=F)
+	colnames(king)[ncol(king)] <- "ID1new"
+	colnames(pheno)[1] <- "ID2"
+	king <- merge(king, pheno, by="ID2", all=F)
+	colnames(king)[ncol(king)] <- "ID2new"
+	king$ID1 <- king$ID1new
+	king$ID2 <- king$ID2new
+	king <- king[,c(1:3)]
+	class(king$ID1) <- 'character'
+	class(king$ID2) <- 'character'
+
+	#Make sparse kinship matrix
+	sparseMat <- makeSparseMatrix(king, thresh = 2*sparse_cutoff, sample.include = sample.id, diag.value = 1, verbose = TRUE)
+	save(sparseMat, file=outfile_matrix)
+}
+
 fit_nullmodel <- function(phenofile, ID_col, Outcome, IV_Rank_Norm=FALSE, 
 			  Fixed_Covars=NULL, Test_Covars=NULL, Test_Covar_P_cutoff=0.05,
 			  Model_type=c("gaussian", "binomial"), relfile=NULL, unrelfile=NULL, outfile){
@@ -906,7 +951,7 @@ fit_nullmodel <- function(phenofile, ID_col, Outcome, IV_Rank_Norm=FALSE,
 	#' outfile = string specifyig where to save the new .RData file containing the GENESIS nullmodel.
 	
 	#Phenotype file
-	phen1<-fread(phenofile,header=F,data.table=F,sep="\t")
+	phen1<-fread(phenofile,header=T,data.table=F,sep="\t")
 	
 	# Inverse-rank normalize if specifief and quantitative analysis
 	if(IV_Rank_Norm==TRUE & Model_type=="gaussian"){
@@ -919,7 +964,7 @@ fit_nullmodel <- function(phenofile, ID_col, Outcome, IV_Rank_Norm=FALSE,
 	
 	if(!is.null(unrelfile)){
 		unrel <- fread(unrelfile, stringsAsFactors=F, data.table=F)
-		unrelphen<-phen1[which(phen1[,IDcol] %in% unrel$ID),]
+		unrelphen<-phen1[which(phen1[,ID_col] %in% unrel[,1]),]
 	}else{
 		unrelphen <- phen1
 	}
@@ -972,7 +1017,6 @@ fit_nullmodel <- function(phenofile, ID_col, Outcome, IV_Rank_Norm=FALSE,
 	save(nullmod,file=outfile)
 
 }	  
-
 
 	   
 	   
