@@ -75,7 +75,7 @@ fit_nullmodel <- function(phenofile, ID_col, Outcome, IV_Rank_Norm=FALSE,
 	#' outfile = string specifyig where to save the new .RData file containing the GENESIS nullmodel.
 	
 	#Phenotype file
-	phen1<-fread(phenofile,header=F,data.table=F,sep="\t")
+	phen1<-fread(phenofile,header=T,data.table=F,sep="\t")
 	
 	# Inverse-rank normalize if specifief and quantitative analysis
 	if(IV_Rank_Norm==TRUE & Model_type=="gaussian"){
