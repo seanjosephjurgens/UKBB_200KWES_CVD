@@ -88,7 +88,7 @@ fit_nullmodel <- function(phenofile, ID_col, Outcome, IV_Rank_Norm=FALSE,
 	
 	if(!is.null(unrelfile)){
 		unrel <- fread(unrelfile, stringsAsFactors=F, data.table=F)
-		unrelphen<-phen1[which(phen1[,IDcol] %in% unrel$ID),]
+		unrelphen<-phen1[which(phen1[,IDcol] %in% unrel[,1]),]
 	}else{
 		unrelphen <- phen1
 	}
