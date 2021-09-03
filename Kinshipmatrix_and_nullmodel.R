@@ -21,7 +21,8 @@ make_sparse_kinship_matrix <- function(KINGfile, famfile, sparse_cutoff=2^(-9/2)
 	king <- fread(KINGfile, stringsAsFactors=F, data.table=F, select=c("ID1", "ID2", "Kinship"))
 	colnames(king)[3] <- 'value'
 	fam <- fread(famfile, stringsAsFactors=F, data.table=F)
-
+	sample.id <- fam[,2]
+	
 	if(compute_unrel==TRUE){
 		relat <- king[king$value >= relat_cutoff,]
 		unrel_IDs <- removerelated(relat[,c(2,4)], fam[,1], random=FALSE, fixed=TRUE)
