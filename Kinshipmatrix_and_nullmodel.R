@@ -50,7 +50,7 @@ make_sparse_kinship_matrix <- function(KINGfile, famfile, sparse_cutoff=2^(-9/2)
 
 	#Make sparse kinship matrix
 	sparseMat <- makeSparseMatrix(king, thresh = 2*sparse_cutoff, sample.include = sample.id, diag.value = 1, verbose = TRUE)
-	save(sparseMat, file=outfile)
+	save(sparseMat, file=outfile_matrix)
 }
 
 fit_nullmodel <- function(phenofile, ID_col, Outcome, IV_Rank_Norm=FALSE, 
