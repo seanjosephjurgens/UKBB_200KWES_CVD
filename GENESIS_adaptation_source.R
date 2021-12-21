@@ -55,21 +55,30 @@ library(SPAtest)
 #######################################################
 # 1) Adaptations of GENESIS analysis functions
 
+
+library(GENESIS)
+library(GWASTools)
+library(SeqArray)
+library(SeqVarTools)
+library(Matrix)
+
+### new SPA function
+
 SPA_pval_Sean <- function(score.result, nullmod, G, pval.thresh = 1){
-	if (!requireNamespace("SPAtest")) stop("package 'SPAtest' must be installed to calculate SPA p-values")
-	expit <- function(x){exp(x)/(1+exp(x))}
+        if (!requireNamespace("SPAtest")) stop("package 'SPAtest' must be installed to calculate SPA p-values")
+        expit <- function(x){exp(x)/(1+exp(x))}
 
-	# index for variants with Score.pval < pval.thresh
-	# only bother running SPA on these variants
-	idx <- which(score.result$Score.pval <= pval.thresh)
+        # index for variants with Score.pval < pval.thresh
+        # only bother running SPA on these variants
+        idx <- which(score.result$Score.pval <= pval.thresh)
 
-	# Set colnames in G to match the IDx
-	G <- as.data.frame(G)
-	colnames(G) <- c(1:ncol(G))
-	#cat('SPA is being applied and Dim G is', dim(G),'...\n')
-	
-	# update columns in score.result
-	setnames(score.result, "Score.pval", "SPA.pval")
+        # Set colnames in G to match the IDx
+        G <- as.data.frame(G)
+        colnames(G) <- c(1:ncol(G))
+        #cat('SPA is being applied and Dim G is', dim(G),'...\n')
+
+        # update columns in score.result
+        setnames(score.result, "Score.pval", "SPA.pval")
         if (nrow(score.result) > 0) {
             score.result$SPA.converged <- NA
         } else {
@@ -78,7 +87,7 @@ SPA_pval_Sean <- function(score.result, nullmod, G, pval.thresh = 1){
 
 	if(length(idx) > 0 ){
 
-		# calculate the fitted values  from the null model; 
+                # calculate the fitted values  from the null model;
                 # expit(eta) = expit(X\beta + Zb)
                 if (nullmod$family$mixedmodel) {
                     mu <- as.vector(expit(nullmod$workingY - nullmod$resid.conditional))
@@ -86,76 +95,74 @@ SPA_pval_Sean <- function(score.result, nullmod, G, pval.thresh = 1){
                     mu <- as.vector(expit(nullmod$workingY - nullmod$resid.marginal))
                 }
 
-		# W is the diagonal of a matrix
-		W <- mu*(1-mu)
-		WX <- W*nullmod$model.matrix
-		XWX.inv <- solve(crossprod(nullmod$model.matrix,WX))
+                # W is the diagonal of a matrix
+                W <- mu*(1-mu)
+                WX <- W*nullmod$model.matrix
+                XWX.inv <- solve(crossprod(nullmod$model.matrix,WX))
 
-		# original code filtered variants with MAC <= 3 here
+                # original code filtered variants with MAC <= 3 here
 
-		# loop through variants
-		for(i in idx){
-			# extract the genotypes
-			g <- G[,i]
-			# get the score
-			s <- score.result$Score[i]
+                # loop through variants
+                for(i in idx){
+                        # extract the genotypes
+                        g <- G[,i]
+                        # get the score
+                        s <- score.result$Score[i]
 
-			### "flip" g and s if the minor allele is the reference allele; don't do this, as this is only for single vars and not Burden
-			##if(mean(g) > 1){ 
-			##	g <- 2-g 
-			##	s <- -s
-			##}
-			# identify which elements in g are hom ref
-			homRefSet <- which(g == 0)
+                        ### "flip" g and s if the minor allele is the reference allele; don't do this, as this is only for single vars and not Burden
+                        ##if(mean(g) > 1){
+                        ##	g <- 2-g
+                        ##	s <- -s
+                        ##}
+                        # identify which elements in g are hom ref
+                        homRefSet <- which(g == 0)
 
-			# compute adjusted genotype values
-			# G - X(X'WX)^{-1}(X'WG)
-			g <- as.vector(g - tcrossprod(nullmod$model.matrix, crossprod(crossprod(WX, g), XWX.inv)))
+                        # compute adjusted genotype values
+                        # G - X(X'WX)^{-1}(X'WG)
+                        g <- as.vector(g - tcrossprod(nullmod$model.matrix, crossprod(crossprod(WX, g), XWX.inv)))
 
-			# compute variance ratio (similar to SAIGE estimator)
-			GPG <- score.result$Score.SE[i]^2
-			GWG <- sum(W*g^2)
-			r <- GPG/GWG
+                        # compute variance ratio (similar to SAIGE estimator)
+                        GPG <- score.result$Score.SE[i]^2
+                        GWG <- sum(W*g^2)
+                        r <- GPG/GWG
 
-			# get inputs to SPAtest function
-			g <- sqrt(r)*g
-			qtilde <- as.numeric(s + crossprod(g, mu))
+                        # get inputs to SPAtest function
+                        g <- sqrt(r)*g
+                        qtilde <- as.numeric(s + crossprod(g, mu))
 
-			# compute SPA p-value
-			if(length(homRefSet)/length(g) < 0.5){
-	        	tmp <- SPAtest:::Saddle_Prob(q = qtilde, mu = mu, g = g, alpha=5e-8, output = "P")
-	        }else{
-	        	tmp <- SPAtest:::Saddle_Prob_fast(	q = qtilde, mu = mu, g = g, alpha = 5e-8, output = "P",
-	        										gNA = g[homRefSet], gNB = g[-homRefSet], 
-	        										muNA = mu[homRefSet], muNB = mu[-homRefSet])
-	        }
+                        # compute SPA p-value
+                        if(length(homRefSet)/length(g) < 0.5){
+                        tmp <- SPAtest:::Saddle_Prob(q = qtilde, mu = mu, g = g, alpha=5e-8, output = "P")
+                }else{
+                      	tmp <- SPAtest:::Saddle_Prob_fast(	q = qtilde, mu = mu, g = g, alpha = 5e-8, output = "P",
+                                                                                                gNA = g[homRefSet], gNB = g[-homRefSet],
+                                                                                                muNA = mu[homRefSet], muNB = mu[-homRefSet])
+                }
 
-	        # add in results
-	        score.result$SPA.converged[i] <- tmp$Is.converge
-	        if(tmp$Is.converge){
-	        	score.result$SPA.pval[i] <- tmp$p.value
-	        }
-		}
-	}
+                # add in results
+                score.result$SPA.converged[i] <- tmp$Is.converge
+                if(tmp$Is.converge){
+                        score.result$SPA.pval[i] <- tmp$p.value
+                }
+                }
+        }
 
 	return(score.result)
 }
 
 
-#### Impute to zero function which is appropriate for very rare variant collapsing tests. Added check for overflow error
+#### Impute to zero function which is appropriate for very rare variant collapsing tests
 zeroImpute_Sean <- function(geno, freqz) {
         nrowz <- nrow(geno)
         ncolz <- ncol(geno)
-        # Check for overflow size
         try(dimz <- nrowz*ncolz, silent=T)
-	      # If fail for overflow, use workaround
         if(!is.na(dimz)){
-		if(dimz < 1500000000){
+                if(dimz < 1500000000){
                         miss.idx <- which(is.na(geno))
                         miss.var.idx <- ceiling(miss.idx/nrow(geno))
                         geno[miss.idx] <- 0
-		            }else{
-                        for(jk in c(1:ncol(geno))){
+                }else{
+                      	for(jk in c(1:ncol(geno))){
                                 #cat('Busy with', jk, 'out of', ncol(geno), '...\n')
                                 miss.rowz <- which(is.na(geno[,jk]))
                                 if(length(miss.rowz)>0){
@@ -163,41 +170,31 @@ zeroImpute_Sean <- function(geno, freqz) {
                                 }
                         }
 
-		}
-	}else{
-                for(jk in c(1:ncol(geno))){
-                        #cat('Busy with', jk, 'out of', ncol(geno), '...\n')
-                        miss.rowz <- which(is.na(geno[,jk]))
-                        if(length(miss.rowz)>0){
-                                geno[miss.rowz,jk] <- 0
-                        }
                 }
-	}
+        }else{
+                        for(jk in c(1:ncol(geno))){
+                                #cat('Busy with', jk, 'out of', ncol(geno), '...\n')
+                                miss.rowz <- which(is.na(geno[,jk]))
+                                if(length(miss.rowz)>0){
+                                        geno[miss.rowz,jk] <- 0
+                                }
+                        }
+        }
 	geno
 }
 
 #### Redefine meanImpute function to work for very large numbers of variants (for many variants, there is a glitch that causes it to error)
 meanImpute_Sean <- function(geno, freqz) {
-	nrowz <- nrow(geno)
-	ncolz <- ncol(geno)
-	try(dimz <- nrowz*ncolz, silent=T)
-	if(!is.na(dimz)){
-		if(dimz < 1500000000){
-                	miss.idx <- which(is.na(geno))
-                	miss.var.idx <- ceiling(miss.idx/nrow(geno))
-                	imputed <- 2*freqz[miss.var.idx]
-                	geno[miss.idx] <- 2*freqz[miss.var.idx]
-		}else{
-			for(jk in c(1:ncol(geno))){
-				#cat('Busy with', jk, 'out of', ncol(geno), '...\n')
-				miss.rowz <- which(is.na(geno[,jk]))
-				if(length(miss.rowz)>0){
-					imputed <- 2*freqz[jk]
-					geno[miss.rowz,jk] <- imputed
-				}	
-			}
-		}
-	}else{
+        nrowz <- nrow(geno)
+        ncolz <- ncol(geno)
+        try(dimz <- nrowz*ncolz, silent=T)
+        if(!is.na(dimz)){
+                if(dimz < 1500000000){
+                        miss.idx <- which(is.na(geno))
+                        miss.var.idx <- ceiling(miss.idx/nrow(geno))
+                        imputed <- 2*freqz[miss.var.idx]
+                        geno[miss.idx] <- 2*freqz[miss.var.idx]
+                }else{
                       	for(jk in c(1:ncol(geno))){
                                 #cat('Busy with', jk, 'out of', ncol(geno), '...\n')
                                 miss.rowz <- which(is.na(geno[,jk]))
@@ -206,20 +203,166 @@ meanImpute_Sean <- function(geno, freqz) {
                                         geno[miss.rowz,jk] <- imputed
                                 }
                         }
-	}
+                }
+        }else{
+                        for(jk in c(1:ncol(geno))){
+                                #cat('Busy with', jk, 'out of', ncol(geno), '...\n')
+                                miss.rowz <- which(is.na(geno[,jk]))
+                                if(length(miss.rowz)>0){
+                                        imputed <- 2*freqz[jk]
+                                        geno[miss.rowz,jk] <- imputed
+                                }
+                        }
+        }
 	geno
 }
 
-## create the burden score, than calls the appropriate single variant test function. 
+## Function to combine per-study results, produced by testVariantSet_ExtractKernelStatistics_ScoresAndCovarianceMatrices_Sean, for meta-analysis
+meta_analysis_combine_Sean <- function(study_path_vector, test=c("Burden", "SKAT", "SMMAT"), min_study_cmac=1){
+
+        n_studies <- length(study_path_vector)
+        study_list <- list()
+        for(i in c(1:n_studies)){
+                load(study_path_vector[i])
+                study_list[[i]] <- assoc
+        }
+
+	groupings <- NULL
+        for(i in c(1:n_studies)){
+                groupings <- unique(c(groupings, rownames(study_list[[i]]$results)))
+        }
+
+	# Cycle over groupings
+        res <- NULL
+        num <- 1
+        n__groupings <- length(groupings)
+        for(group in groupings){
+                cat('Busy with group', group, 'which is', num, 'out of', n__groupings, '...\n')
+                num <- num + 1
+                n.alt <- 0
+                n.sample.alt <- 0
+                n.site <- 0
+                n_studies_effective <- 0
+                sv.list <- list()
+                V.list <- list()
+                for(i in c(1:n_studies)){
+                        if(group %in% rownames(study_list[[i]]$results) & study_list[[i]]$results[group,'n.alt']>=min_study_cmac){
+                                n.alt <- n.alt + study_list[[i]]$results[group,'n.alt']
+                                n.sample.alt <- n.sample.alt + study_list[[i]]$results[group,'n.sample.alt']
+                                n_studies_effective <- n_studies_effective + 1
+                                sv.list[[n_studies_effective]] <- study_list[[i]]$variantInfo[[group]]
+                                sv.list[[n_studies_effective]] <- sv.list[[n_studies_effective]][order(sv.list[[n_studies_effective]]$variant.id),]
+                                V.list[[n_studies_effective]] <- study_list[[i]]$covariance_matrix[[group]]
+                                V.list[[n_studies_effective]] <- V.list[[n_studies_effective]][order(rownames(V.list[[n_studies_effective]])), order(colnames(V.list[[n_studies_effective]]))]
+                        }
+                }
+                out <- as.data.frame(t(as.data.frame(c(group, n_studies_effective, n.site, n.alt, n.sample.alt), stringsAsFactors=F)))
+                colnames(out) <- c("Group", "n.studies.contributing", "n.site", "n.alt", "n.sample.alt")
+                rownames(out) <- group
+                class(out$n.studies.contributing) <- class(out$n.site) <- class(out$n.alt) <- class(out$n.sample.alt) <- "integer"
+
+                if(n_studies_effective>0){
+                        for(i in c(1:n_studies_effective)){
+                                check <- nrow(sv.list[[i]])
+                                check1 <- sv.list[[i]][,'variant.id'] == colnames(V.list[[i]])
+                                check2 <- colnames(V.list[[i]]) == rownames(V.list[[i]])
+                                if(F %in% c(check1, check2)){
+                                        stop("Warning: for cohort ", i, "the variants in the single var file, colnames of Covariance file, or rownames of covariance file do not match.\n")
+                                }
+                        }
+
+                        variant.list <- NULL
+                        for(i in c(1:n_studies_effective)){
+                                variant.list <- unique(c(variant.list, sv.list[[i]]$variant.id))
+                        }
+                        variant.list <- variant.list[order(variant.list)]
+                        n.site <- n.variants <- length(variant.list)
+                        out$n.site <- n.site
+
+                        # Reconstruct variant and covariance matrix
+                        U <- matrix(0, n.variants, 1, dimnames=list(variant.list, 'Score'))
+                        V <- matrix(0, n.variants, n.variants, dimnames=list(variant.list, variant.list))
+                        for(i in c(1:n_studies_effective)){
+                                variant.list.cohort <- sv.list[[i]][,'variant.id']
+                                variant.list.cohort <- variant.list.cohort[order(variant.list.cohort)]
+                                sv.list[[i]] <- sv.list[[i]][order(sv.list[[i]]$variant.id),]
+                                U[variant.list.cohort,] <- U[variant.list.cohort,] + sv.list[[i]][,'Score']
+                                if(is.null(ncol(V.list[[i]]))){
+                                        V[variant.list.cohort, variant.list.cohort] <- matrix(V[variant.list.cohort, variant.list.cohort] + V.list[[i]])
+                                }else{
+                                      	V[variant.list.cohort, variant.list.cohort] <- matrix(V[variant.list.cohort, variant.list.cohort] + V.list[[i]][variant.list.cohort,variant.list.cohort])
+                                }
+                        }
+
+                        ### Run test
+                        # Start with Burden, this is also used for SMMAT test, and also for SKAT when implemented later
+                        U.sum = sum(U[,'Score'])
+                        V.sum = sum(V)
+                        GG1 <- rowSums(V)
+
+                        # Then using adapted GENESIS script
+                        ### Run burden test
+                        burden.pval <- pchisq(U.sum^2/V.sum, df=1, lower.tail=FALSE)
+                        out[,c("Burden.Score", "Burden.Variance", "Burden.pval")] <- c(U.sum, V.sum, burden.pval)
+                        class(out$Burden.Score) <- class(out$Burden.Variance) <- class(out$Burden.pval) <- "numeric"
+
+                        if("SKAT" %in% test){
+                                ### Run SKAT
+                                Q <- sum(U^2)
+                                SKAT.pval <- NA
+                                SKAT.pval.method <- NA
+                                if (mean(abs(V)) >= sqrt(.Machine$double.eps)) {
+                                        pv <- GENESIS:::.regular(Q, V, n.variants)
+                                        SKAT.pval <- pv$pval
+                                        SKAT.pval.method <- pv$method
+                                }
+                                out[,c('SKAT.pval', 'SKAT.pval.method')] <- c(SKAT.pval, SKAT.pval.method)
+                                class(out$SKAT.pval) <- "numeric"
+                                class(out$SKAT.pval.method) <- "character"
+                        }
+                        if("SMMAT" %in% test){
+                                ### Run SMMAT
+                                # Compute burden-adjusted SKAT statistic
+                                U <- U - GG1*U.sum/V.sum
+                                Q <- sum(U^2)
+                                V <- V - tcrossprod(GG1)/V.sum
+                                # SKAT
+                                theta.pval <- NA
+                                theta.pval.method <- NA
+                                err <- NA
+                                if (mean(abs(V)) >= sqrt(.Machine$double.eps)) {
+                                        pv <- GENESIS:::.regular(Q, V, n.variants)
+                                        theta.pval <- pv$pval
+                                        theta.pval.method <- pv$method
+                                        err <- pv$err
+                                }
+                                # Fisher's method to combine p-values
+                                SMMAT.pval <- tryCatch(pchisq(-2*log(burden.pval)-2*log(theta.pval), df=4, lower.tail = FALSE), error = function(e) { NA })
+                                if(is.na(SMMAT.pval)) {
+                                        err <- 1
+                                        SMMAT.pval <- NA
+                                        SMMAT.pval <- burden.pval
+                                }
+                                out[,c("theta.pval", "theta.pval.method", "err", "SMMAT.pval")] <- c(theta.pval, theta.pval.method,  err, SMMAT.pval)
+                                class(out$theta.pval) <- class(out$err) <- class(out$SMMAT.pval) <- "numeric"
+                                class(out$theta.pval.method) <- "character"
+                        }
+                }
+                res <- dplyr::bind_rows(res, out)
+        }
+	return(res)
+}
+
+## create the burden score, than calls the appropriate single variant test function.
 ## can easily implement GxE interaction with the burden score... later!
 testVariantSetBurden_Sean <- function(nullmod, G, weights, burden.test, collapse){
     # multiply G by weights and compute burden
     if(is(G, "Matrix")){
         burden <- rowSums(G %*% Diagonal(x = weights))
     }else{
-        burden <- colSums(t(G) * weights)
+	burden <- colSums(t(G) * weights)
     }
-    
+
     if(collapse){
         burden[which(burden>0)] <- 1
     }
@@ -229,12 +372,12 @@ testVariantSetBurden_Sean <- function(nullmod, G, weights, burden.test, collapse
     if(is.null(nullmod$RSS0)){
         nullmod$RSS0 <- as.numeric(crossprod(nullmod$Ytilde))
     }
-    
+
     if (burden.test == "Score") {
-        out <- GENESIS:::.testGenoSingleVarScore(Gtilde, G = burden, resid = nullmod$resid, RSS0 = nullmod$RSS0) 
+        out <- GENESIS:::.testGenoSingleVarScore(Gtilde, G = burden, resid = nullmod$resid, RSS0 = nullmod$RSS0)
     }
     if (burden.test == "Score.SPA") {
-	out <- GENESIS:::.testGenoSingleVarScore(Gtilde, G = burden, resid = nullmod$resid, RSS0 = nullmod$RSS0)
+        out <- GENESIS:::.testGenoSingleVarScore(Gtilde, G = burden, resid = nullmod$resid, RSS0 = nullmod$RSS0)
         out <- SPA_pval_Sean(score.result = out, nullmod = nullmod, G = burden, pval.thresh = 0.05)
     }
     # if (burden.test == "Wald"){
@@ -246,11 +389,11 @@ testVariantSetBurden_Sean <- function(nullmod, G, weights, burden.test, collapse
 
 ## new function that runs both SKAT and fastSKAT
 testVariantSetSKAT_Sean <- function(nullmod, G, weights, neig = 200, ntrace = 500, verbose = FALSE){
-    # multiply G by weights 
+    # multiply G by weights
     if(is(G, "Matrix")){
-        G <- G %*% Diagonal(x = weights)        
+        G <- G %*% Diagonal(x = weights)
     }else{
-        G <- t(t(G) * weights)
+	G <- t(t(G) * weights)
     }
 
     # scores
@@ -269,11 +412,11 @@ testVariantSetSKAT_Sean <- function(nullmod, G, weights, neig = 200, ntrace = 50
 
 ## function for SMMAT and fastSMMAT
 testVariantSetSMMAT_Sean <- function(nullmod, G, weights, neig = 200, ntrace = 500, verbose = FALSE) {
-    # multiply G by weights 
+    # multiply G by weights
     if(is(G, "Matrix")){
-        G <- G %*% Diagonal(x = weights)        
+        G <- G %*% Diagonal(x = weights)
     }else{
-        G <- t(t(G) * weights)
+	G <- t(t(G) * weights)
     }
 
     # scores
@@ -325,12 +468,222 @@ testVariantSetSMMAT_Sean <- function(nullmod, G, weights, neig = 200, ntrace = 5
     return(list(pval_burden = burden.pval, pval_theta = theta.pval, pval_SMMAT = smmat.pval, err = err, pval_theta.method = out$pval.method))
 }
 
+#####################################################
+### Function for SKAT according to SAIGE-GENE+ method
+testVariantSetSKAT_SAIGEGENEplus_Sean <- function(nullmod, G, weights, neig = Inf, ntrace = Inf, Use.SPA=F, SAIGEGENEplus_collapse_threshold=10, freq){
 
-testVariantSet_Sean <- function( nullmod, G, weights, use.weights=F,
-                            test = c("Burden", "SKAT", "fastSKAT", "SMMAT", "fastSMMAT", "SKATO"),
-                            burden.test = c("Score","Score.SPA"), collapse = FALSE, 
-			    vc.type = "regular weighted",
-                            neig = 200, ntrace = 500, 
+        # multiply G by weights
+        if(is(G, "Matrix")){
+                G <- G %*% Diagonal(x = weights)
+        }else{
+              	G <- t(t(G) * weights)
+        }
+
+	if(is.null(nullmod$RSS0)){
+                nullmod$RSS0 <- as.numeric(crossprod(nullmod$Ytilde))
+        }
+
+	# Similar to the SAIGE-GENE+ method (bioRxiv), we will collapse variant with very low MAC into a single marker/burden, default is for markers with MAC<10
+        verylow_MACs <- which(freq$MAC<SAIGEGENEplus_collapse_threshold)
+        keep_MACs <- which(freq$MAC>=SAIGEGENEplus_collapse_threshold)
+        Gnew <- G[,keep_MACs]
+        if(length(verylow_MACs)>1){
+                Gnew <- cbind(Gnew, rowSums(G[,verylow_MACs]))
+        }else if(length(verylow_MACs)==1){
+                Gnew <- cbind(Gnew, G[,verylow_MACs])
+        }
+
+	# Find cases where only one burden/marker contributes for a variant set, restrict to a basic Score test in this case.
+        ncolGnew <- NULL
+        try(ncolGnew <- ncol(Gnew))
+        if(is.null(ncolGnew)){
+                ncolGnew <- 1
+        }
+	if(ncolGnew<2){
+                # adjust burden for covariates and random effects
+                Gnew_tilde <- GENESIS:::calcGtilde(nullmod, Gnew)
+
+                if (Use.SPA) {
+                        out <- GENESIS:::.testGenoSingleVarScore(Gnew_tilde, G = Gnew, resid = nullmod$resid, RSS0 = nullmod$RSS0)
+                        outnull <- out
+                        # Run SPA for the one burden/marker
+                        out <- SPA_pval_Sean(score.result = out, nullmod = nullmod, G = as.matrix(Gnew), pval.thresh = 0.05)
+                        # Compute SPA adjusted variance
+                        out$SPA.Score.Variance <- (out$Score^2) / qchisq(out$SPA.pval, lower.tail=F, df=1)
+                        out[out$SPA.Score.Variance==0,'SPA.Score.Variance'] <- sqrt(outnull[which(out$SPA.Score.Variance==0),'Score.SE'])
+                        out <- out[,c("Score", "SPA.Score.Variance", "SPA.pval", "Est", "Est.SE")]
+                        colnames(out)[c(4,5)] <- c("Raw.Est", "Raw.Est.SE")
+                        colnames(out) <- paste0("Burden_", colnames(out))
+                        out$SKAT_SAIGEGENEplus.SPA.Q <- NA
+                        out$SKAT_SAIGEGENEplus.SPA.VarianceSum <- NA
+                        out$SKAT_SAIGEGENEplus.SPA.pval <- out$Burden_SPA.pval
+                        return(out)
+                }else{
+                      	out <- GENESIS:::.testGenoSingleVarScore(Gnew_tilde, G = Gnew, resid = nullmod$resid, RSS0 = nullmod$RSS0)
+                        SKAT_SAIGEGENEplus.Q <- NA
+                        SKAT_SAIGEGENEplus.VarianceSum <- NA
+                        SKAT_SAIGEGENEplus.pval <- out$Score.pval
+                        out <- as.data.frame(cbind(SKAT_SAIGEGENEplus.Q, SKAT_SAIGEGENEplus.VarianceSum, SKAT_SAIGEGENEplus.pval))
+                        colnames(out) <- c("SKAT_SAIGEGENEplus.Q", "SKAT_SAIGEGENEplus.VarianceSum", "SKAT_SAIGEGENEplus.pval")
+                        return(out)
+                }
+        }
+	# Calculate SKAT statistic for use later
+        U <- as.vector(crossprod(Gnew, nullmod$resid)) # WGPY
+        # SKAT test statistic
+        Q <- sum(U^2)
+
+        # adjust G for covariates and random effects
+        Gnew_tilde <- GENESIS:::calcGtilde(nullmod, Gnew) # P^{1/2}GW
+
+        # Compute SKAT Variance
+        ncolGnew_tilde <- ncol(Gnew_tilde)
+        nrowGnew_tilde <- nrow(Gnew_tilde)
+
+        if (ncolGnew_tilde <= nrowGnew_tilde) {
+                V <- crossprod(Gnew_tilde)
+        } else {
+                V <- tcrossprod(Gnew_tilde)
+        }
+
+	# If applied, we will account for case-control imbalance using SPA, following the procedures from SAIGE-GENE (AJHG)
+        if(Use.SPA){
+                # We will start with single marker tests for each of the markers with high enough MAC and for the burden of very rare variants
+                out <- GENESIS:::.testGenoSingleVarScore(Gnew_tilde, G = Gnew, resid = nullmod$resid, RSS0 = nullmod$RSS0)
+                outnull <- out
+                # Run SPA for each marker and the combined burden of very rare variants
+                out <- SPA_pval_Sean(score.result = out, nullmod = nullmod, G = as.matrix(Gnew), pval.thresh = 0.05)
+                # Compute SPA adjusted variance
+                out$SPA.Score.Variance <- (out$Score^2) / qchisq(out$SPA.pval, lower.tail=F, df=1)
+                out[out$SPA.Score.Variance==0,'SPA.Score.Variance'] <- sqrt(outnull[which(out$SPA.Score.Variance==0),'Score.SE'])
+                out[out$SPA.Score.Variance==0,'SPA.pval'] <- outnull[which(out$SPA.Score.Variance==0),'Score.pval']
+                out <- out[,c("Score", "SPA.Score.Variance", "SPA.pval", "Est", "Est.SE")]
+                colnames(out)[c(4,5)] <- c("Raw.Est", "Raw.Est.SE")
+                single_var_out <- out
+                # Compute SPA adjusted Sum of Variances (SAIGE-GENE, AJHG), we will use this for SKAT test later
+                V_tilde <- single_var_out$SPA.Score.Variance
+                Vsum_tilde <- sum(single_var_out$SPA.Score.Variance)
+                # We will also compute a burden test for all markers, as done in SAIGE-GENE
+                burden <- rowSums(Gnew)
+                burden_tilde <- GENESIS:::calcGtilde(nullmod, burden) # P^{1/2}GW
+                out <- GENESIS:::.testGenoSingleVarScore(burden_tilde, G = burden, resid = nullmod$resid, RSS0 = nullmod$RSS0)
+                outnull <- out
+                #Run SPA for the burden
+                out <- SPA_pval_Sean(score.result = out, nullmod = nullmod, G = as.matrix(burden), pval.thresh = 0.05)
+                # Compute SPA adjusted variance
+                out$SPA.Score.Variance <- (out$Score^2) / qchisq(out$SPA.pval, lower.tail=F, df=1)
+                out[out$SPA.Score.Variance==0,'SPA.Score.Variance'] <- sqrt(outnull[which(out$SPA.Score.Variance==0),'Score.SE'])
+                out[out$SPA.Score.Variance==0,'SPA.pval'] <- outnull[which(out$SPA.Score.Variance==0),'Score.pval']
+                out <- out[,c("Score", "SPA.Score.Variance", "SPA.pval", "Est", "Est.SE")]
+                colnames(out)[c(4,5)] <- c("Raw.Est", "Raw.Est.SE")
+                colnames(out) <- paste0("Burden_", colnames(out))
+
+                # Compute SPA adjusted Burden Variance (SAIGE-GENE, AJHG)
+                Vsum_downwardhat <- out$Burden_SPA.Score.Variance
+
+                # Compute ratio to find more conservative variance (SAIGE-GENE, AJHG)
+                r <- Vsum_tilde / Vsum_downwardhat
+                r_tilde <- min(1, r)
+
+                # Adjust SKAT variance (SAIGE-GENE, AJHG)
+                diag(V) <- V_tilde
+                V <- V / r_tilde
+        }
+
+	if (!requireNamespace("survey"))
+                stop("package 'survey' must be installed to calculate p-values for SKAT or SMMAT")
+        if (!requireNamespace("CompQuadForm"))
+                stop("package 'CompQuadForm' must be installed to calculate p-values for SKAT or SMMAT")
+
+
+        # Run SKAT
+        if (mean(abs(V)) < sqrt(.Machine$double.eps)) {
+                return(list(pval = NA_real_, pval.method = NA_character_,
+                        err = 1))
+        }
+	if (min(ncolGnew_tilde, nrowGnew_tilde) < 2 * neig) {
+                pv <- GENESIS:::.regular(Q, V, ncolGnew_tilde)
+        }
+	else {
+              	if (verbose)
+                        message("using method fast_H")
+                pv <- GENESIS:::.fastH(Q, V, neig)
+        }
+	if(Use.SPA){
+                out$SKAT_SAIGEGENEplus.SPA.Q <- Q
+                out$SKAT_SAIGEGENEplus.SPA.VarianceSum <- sum(V)
+                out$SKAT_SAIGEGENEplus.SPA.pval <- pv$pval
+                return(out)
+        }else{
+              	SKAT_SAIGEGENEplus.Q <- Q
+                SKAT_SAIGEGENEplus.VarianceSum <- sum(V)
+                SKAT_SAIGEGENEplus.pval <- out$Score.pval
+                out <- as.data.frame(cbind(SKAT_SAIGEGENEplus.Q, SKAT_SAIGEGENEplus.VarianceSum, SKAT_SAIGEGENEplus.pval))
+                colnames(out) <- c("SKAT_SAIGEGENEplus.Q", "SKAT_SAIGEGENEplus.VarianceSum", "SKAT_SAIGEGENEplus.pval")
+                return(out)
+        }
+
+}
+
+testVariantSet_ExtractKernelStatistics_ScoresAndCovarianceMatrices_Sean <- function(nullmod, G, weights, var.info, neig = Inf, ntrace = Inf, Use.SPA=F, freq,
+                                                                                       SAIGEGENEplus_collapse_threshold=1){
+
+        # Check for use.SPA, which is not yet supported
+        if(Use.SPA){
+                stop("SPA not yet implemented for ExtractKernelStatistics function. Stopping.")
+        }
+
+	# Modify var.info so output is in chr:pos:ref:alt format and can be compared across studies
+        var.id.name <- paste0(var.info$chr, ":", var.info$pos, ":", var.info$ref, ":", var.info$alt)
+        colnames(G) <- var.id.name
+
+
+        if(is(G, "Matrix")){
+                burden <- rowSums(G %*% Diagonal(x = weights))
+                G <- G %*% Diagonal(x = weights)
+        }else{
+              	burden <- colSums(t(G) * weights)
+                G <- t(t(G) * weights)
+        }
+
+
+	if(is.null(nullmod$RSS0)){
+                nullmod$RSS0 <- as.numeric(crossprod(nullmod$Ytilde))
+        }
+
+	# Calculate SKAT statistic
+        U <- as.vector(crossprod(G, nullmod$resid)) # WGPY
+        # SKAT test statistic
+        Q <- sum(U^2)
+
+        # adjust G for covariates and random effects
+        burdentilde <- GENESIS:::calcGtilde(nullmod, burden)
+        Gtilde <- GENESIS:::calcGtilde(nullmod, G) # P^{1/2}GW
+
+        # Compute SKAT Variance
+        ncolGtilde <- ncol(Gtilde)
+        nrowGtilde <- nrow(Gtilde)
+
+        if (ncolGtilde <= nrowGtilde) {
+                V <- crossprod(Gtilde)
+        } else {
+                V <- tcrossprod(Gtilde)
+        }
+        colnames(burden_out) <- paste0("Burden_", colnames(burden_out))
+        single_var_out <- GENESIS:::.testGenoSingleVarScore(Gtilde, G = G, resid = nullmod$resid, RSS0 = nullmod$RSS0)
+
+        out <- list(NULL)
+        out[['burden_out']] <- burden_out
+        out[['single_var_out']] <- single_var_out
+        out[['covariance_matrix']] <- V
+        return(out)
+}
+
+testVariantSet_Sean <- function( nullmod, G, weights, freq, use.weights=F, var.info,
+                            test = c("Burden", "SKAT", "fastSKAT", "SMMAT", "fastSMMAT", "SKATO", "SKAT_SAIGEGENEplus", "ExtractKernelStatistics"),
+                            burden.test = c("Score","Score.SPA"), collapse = FALSE,
+                            vc.type = "regular weighted", vc.test=c("Score","Score.SPA"), SAIGEGENEplus_collapse_threshold=10,
+                            neig = 200, ntrace = 500,
                             rho = seq(from = 0, to = 1, by = 0.1)){
                            # pval.method = c("davies", "kuonen", "liu"),
                            # return.scores = FALSE, return.scores.cov = FALSE){
@@ -341,38 +694,72 @@ testVariantSet_Sean <- function( nullmod, G, weights, use.weights=F,
     # pval.method <- match.arg(pval.method)
 
     G <- GENESIS:::.genoAsMatrix(nullmod, G)
-
     if (test == "Burden") {
-	if(collapse){
-		burden.type <- "collapsing test"
-	}else if(!use.weights){
-		burden.type <- "regular burden"
-	}else{
-		burden.type <- "externally weighted burden"
-	}
-        cat('Running Burden test type', burden.type, 'using Pval method ', burden.test, '...\n')
-	out <- testVariantSetBurden_Sean(nullmod, G, weights, burden.test = burden.test, collapse = collapse)
+        if(collapse){
+                burden.type <- "collapsing test"
+        }else if(!use.weights){
+                burden.type <- "regular burden"
+        }else{
+              	burden.type <- "externally weighted burden"
+        }
+	#cat('Running Burden test type', burden.type, 'using Pval method ', burden.test, '...\n')
+        out <- testVariantSetBurden_Sean(nullmod, G, weights, burden.test = burden.test, collapse = collapse)
     }
     if (test == "SKAT") {
-	cat('Running variance component-based test type', test, 'type', vc.type, '...\n')
+        if(vc.test=="Score.SPA"){
+                stop('SPA is not yet implemented for', test, '...\n')
+        }
+	#cat('Running variance component-based test type', test, 'type', vc.type, '...\n')
         out <- testVariantSetSKAT_Sean(nullmod, G, weights, neig = Inf, ntrace = Inf)
                                    # return.scores, return.scores.cov)
     }
     if(test == "fastSKAT"){
-        cat('Running variance component-based test type', test, 'type', vc.type, '...\n')
+        if(vc.test=="Score.SPA"){
+                stop('SPA is not yet implemented for', test, '...\n')
+        }
+	#cat('Running variance component-based test type', test, 'type', vc.type, '...\n')
         out <- testVariantSetSKAT_Sean(nullmod, G, weights, neig, ntrace)
     }
     if (test == "SMMAT") {
-        cat('Running variance component-based test type', test, 'type', vc.type, '...\n')
+        if(vc.test=="Score.SPA"){
+                stop('SPA is not yet implemented for', test, '...\n')
+        }
+	#cat('Running variance component-based test type', test, 'type', vc.type, '...\n')
         out <- testVariantSetSMMAT_Sean(nullmod, G, weights, neig = Inf, ntrace = Inf)
     }
     if(test == "fastSMMAT"){
-        cat('Running variance component-based test type', test, 'type', vc.type, '...\n')
+        if(vc.test=="Score.SPA"){
+                stop('SPA is not yet implemented for', test, '...\n')
+        }
+	#cat('Running variance component-based test type', test, 'type', vc.type, '...\n')
         out <- testVariantSetSMMAT_Sean(nullmod, G, weights, neig, ntrace)
     }
     if(test == "SKATO"){
-        cat('Running variance component-based test type', test, 'type', vc.type, '...\n')
+        if(vc.test=="Score.SPA"){
+                stop('SPA is not yet implemented for', test, '...\n')
+        }
+	#cat('Running variance component-based test type', test, 'type', vc.type, '...\n')
         out <- testVariantSetSKATO_Sean(nullmod, G, weights, rho)
+    }
+    if(test == "SKAT_SAIGEGENEplus"){
+        #cat('Running variance component-based test type', test, 'type', vc.type, 'using pvalue method', vc.test, '...\n')
+        Use.SPA <- F
+        if(vc.test=="Score.SPA"){
+                Use.SPA <- T
+        }
+	out <- testVariantSetSKAT_SAIGEGENEplus_Sean(nullmod, G, weights, neig = Inf, ntrace = Inf, Use.SPA=Use.SPA, freq=freq,
+                                                     SAIGEGENEplus_collapse_threshold=SAIGEGENEplus_collapse_threshold)
+    }
+    if(test == "ExtractKernelStatistics"){
+        #cat('Extracting Kernel Statistics...\n')
+        Use.SPA <- F
+        #if(vc.test=="Score.SPA"){
+        #	Use.SPA <- T
+        #}
+	# SPA not yet supported.... Will implement later
+        # SAIGEGENEplus_collapse not yet implemented ... Will work on this later.
+        out <- testVariantSet_ExtractKernelStatistics_ScoresAndCovarianceMatrices_Sean(nullmod, G, weights, var.info, neig = Inf, ntrace = Inf, Use.SPA=Use.SPA, freq=freq,
+                                                                                       SAIGEGENEplus_collapse_threshold=SAIGEGENEplus_collapse_threshold)
     }
     return(out)
 }
@@ -381,15 +768,16 @@ setGeneric("assocTestAggregate_Sean", function(gdsobj, ...) standardGeneric("ass
 
 match.arg_Sean <- function(test) {
     if (length(test) > 1) test <- NULL
-    match.arg(test, choices=c("Burden", "SKAT", "fastSKAT", "SMMAT", "fastSMMAT", "SKATO"))
+    match.arg(test, choices=c("Burden", "SKAT", "fastSKAT", "SMMAT", "fastSMMAT", "SKATO", "SKAT_SAIGEGENEplus", "ExtractKernelStatistics"))
 }
 
 setMethod("assocTestAggregate_Sean",
           "SeqVarIterator",
           function(gdsobj, null.model, AF.max=1, MAC.max=Inf, use.weights=F,
                    weight.beta=c(1,1), weight.user=NULL,
-                   test=c("Burden", "SKAT", "fastSKAT", "SMMAT", "SKATO"),
-                   burden.test=c("Score", "Score.SPA"), collapse=FALSE, vc.type="regular weighted",
+                   test=c("Burden", "SKAT", "fastSKAT", "SMMAT", "SKATO", "SKAT_SAIGEGENEplus", "ExtractKernelStatistics"),
+                   burden.test=c("Score", "Score.SPA"), collapse=FALSE,
+                   vc.test=c("Score", "Score.SPA"), vc.type="regular weighted", SAIGEGENEplus_collapse_threshold=10,
                    # pval.method=c("davies", "kuonen", "liu"),
                    neig = 200, ntrace = 500,
                    rho = seq(from = 0, to = 1, by = 0.1),
@@ -407,7 +795,7 @@ setMethod("assocTestAggregate_Sean",
 
               # coerce null.model if necessary
               if (sparse) null.model <- GENESIS:::.nullModelAsMatrix(null.model)
-              
+
               # filter samples to match null model
               sample.index <- GENESIS:::.setFilterNullModel(gdsobj, null.model, verbose=verbose)
 
@@ -416,17 +804,21 @@ setMethod("assocTestAggregate_Sean",
 
               # check ploidy
               if (SeqVarTools:::.ploidy(gdsobj) == 1) male.diploid <- FALSE
-              
+
               # results
               res <- list()
               res.var <- list()
+              if(test == "ExtractKernelStatistics"){
+                  res.covariance <- list()
+              }
+
               i <- 1
               n.iter <- length(variantFilter(gdsobj))
               set.messages <- ceiling(n.iter / 100) # max messages = 100
               iterate <- TRUE
               while (iterate) {
                   var.info <- variantInfo(gdsobj, alleles=match.alleles, expanded=TRUE)
-                  
+
                   if (!imputed) {
                       geno <- expandedAltDosage(gdsobj, use.names=FALSE, sparse=sparse)[sample.index,,drop=FALSE]
                   } else {
@@ -444,11 +836,10 @@ setMethod("assocTestAggregate_Sean",
                   # number of non-missing samples
                   # n.obs <- colSums(!is.na(geno))
                   n.obs <- GENESIS:::.countNonMissing(geno, MARGIN = 2)
-                  
+
                   # allele frequency
                   freq <- GENESIS:::.alleleFreq(gdsobj, geno, variant.index=index, sample.index=sample.index,
                                       male.diploid=male.diploid, genome.build=genome.build)
-                  
                   # filter monomorphic variants
                   keep <- GENESIS:::.filterMonomorphic(geno, count=n.obs, freq=freq$freq, imputed=imputed)
 
@@ -470,7 +861,7 @@ setMethod("assocTestAggregate_Sean",
                       weight <- currentVariants(gdsobj)[[weight.user]][expandedVariantIndex(gdsobj)]
                       if (!is.null(index)) weight <- weight[index]
                       weight <- weight[keep]
-                      
+
                       weight0 <- is.na(weight) | weight == 0
                       if (any(weight0)) {
                           keep <- !weight0
@@ -481,52 +872,72 @@ setMethod("assocTestAggregate_Sean",
                           weight <- weight[keep]
                       }
                   }
-                  
+
                   # number of variant sites
                   n.site <- length(unique(var.info$variant.id))
 
                   # number of alternate alleles
                   n.alt <- sum(geno, na.rm=TRUE)
-                  
+
                   # number of samples with observed alternate alleles > 0
                   n.sample.alt <- sum(rowSums(geno, na.rm=TRUE) > 0)
-               
+
                   res[[i]] <- data.frame(n.site, n.alt, n.sample.alt)
                   res.var[[i]] <- cbind(var.info, n.obs, freq, weight)
-                  
+                  if(test == "ExtractKernelStatistics"){
+                      cat('ExtractKernelStatistics number', i, '\n')
+                      res.covariance[[i]] <- NA
+                  }
                   if (n.site > 0) {
                       # mean impute missing values, unless it is collapsing test in which case we will impute to zero
                       if(collapse){
-		          if (any(n.obs < nrow(geno))) {
-			  	      geno <- zeroImpute_Sean(geno, freq$freq)
-		      	  }
-		      }else{
-		          if (any(n.obs < nrow(geno))) {
-                          	geno <- meanImpute_Sean(geno, freq$freq)
+                          if (any(n.obs < nrow(geno))) {
+                                geno <- zeroImpute_Sean(geno, freq$freq)
                           }
-		      }
+                      }else{
+                          if (any(n.obs < nrow(geno))) {
+                                geno <- meanImpute_Sean(geno, freq$freq)
+                          }
+                      }
 
-            # do the test
-            assoc <- testVariantSet_Sean(null.model, G=geno, use.weights=use.weights, weights=weight, 
-                                    test=test, burden.test=burden.test, vc.type=vc.type, collapse=collapse,
-                                    neig = neig, ntrace = ntrace,
-                                    rho=rho)
-                                    # pval.method=pval.method)
-            res[[i]] <- cbind(res[[i]], assoc, stringsAsFactors=FALSE)
-        }
+                      # do the test
+                      assoc <- testVariantSet_Sean(null.model, G=geno, use.weights=use.weights, weights=weight, freq=freq,
+                                              test=test, burden.test=burden.test, collapse=collapse, var.info=var.info,
+                                              vc.test=vc.test, vc.type=vc.type, SAIGEGENEplus_collapse_threshold=SAIGEGENEplus_collapse_threshold,
+                                              neig = neig, ntrace = ntrace,
+                                              rho=rho)
+                                              # pval.method=pval.method)
+                      if(test == 'ExtractKernelStatistics'){
+                                res[[i]] <- cbind(res[[i]], assoc[['burden_out']], stringsAsFactors=FALSE)
+                                res.var[[i]]$variant.id <- paste0(res.var[[i]]$chr, ":", res.var[[i]]$pos, ":", res.var[[i]]$ref, ":", res.var[[i]]$alt)
+                                assoc[['single_var_out']]$variant.id <- rownames(assoc[['single_var_out']])
+                                res.var[[i]] <- merge(res.var[[i]], assoc[['single_var_out']], by="variant.id", all=T)
+                                res.covariance[[i]] <- assoc[['covariance_matrix']]
+                      }else{
+                            	res[[i]] <- cbind(res[[i]], assoc, stringsAsFactors=FALSE)
+                      }
+                  }
 
-        if (verbose & n.iter > 1 & i %% set.messages == 0) {
-            message(paste("Iteration", i , "of", n.iter, "completed"))
-        }
-        i <- i + 1
-        iterate <- SeqVarTools:::iterateFilter(gdsobj, verbose=F)
-    }
+                  if (verbose & n.iter > 1 & i %% set.messages == 0) {
+                      message(paste("Iteration", i , "of", n.iter, "completed"))
+                  }
+                  i <- i + 1
+                  iterate <- SeqVarTools:::iterateFilter(gdsobj, verbose=F)
+              }
+              if(test == 'ExtractKernelStatistics'){
+                  res <- list(results=dplyr::bind_rows(res), variantInfo=res.var, covariance_matrix=res.covariance)
+              }else{
+                  res <- list(results=dplyr::bind_rows(res), variantInfo=res.var)
+              }
+              out_res <- GENESIS:::.annotateAssoc(gdsobj, res)
+              if(test == 'ExtractKernelStatistics'){
+                  names(out_res$covariance_matrix) <- names(out_res$variantInfo)
+              }
+              return(out_res)
+          })
 
-    res <- list(results=dplyr::bind_rows(res), variantInfo=res.var)
-    GENESIS:::.annotateAssoc(gdsobj, res)
-})
 
-# Helper function from TopmedPipeline for making GRanges objects from variant grouping files 	  
+#Helper function from TopmedPipeline for making GRanges objects from variant grouping files 	  
 aggregateGRangesList <- function(variants) {
     stopifnot(all(c("group_id", "chr", "pos") %in% names(variants)))
     groups <- unique(variants$group_id)
@@ -1046,7 +1457,7 @@ fit_nullmodel <- function(phenofile, ID_col, Outcome, IV_Rank_Norm=FALSE,
 # Burden and collapsing tests, options for SPA
 perform_burden_collapse <-function(gdsfile, groupfile, phenfile, ID_col, nullfile, outfile,
 				   burden.test=c("Score", "Score.SPA"), collapse=TRUE,
-				   AF.max=0.001, MAC.max=Inf, use.weights=FALSE){
+				   AF.max=0.001, MAC.max=Inf, use.weights=FALSE, weight.beta=c(1,1)){
 	#' 
 	#' gdsfile = string specifying the file name of the genetic dataset; dataset should be in SeqArray GDS format 
 	#' groupfile = string specifyinng the file name of the grouping file; the grouping file contains information of variants to be included in the analysis:
@@ -1080,28 +1491,36 @@ perform_burden_collapse <-function(gdsfile, groupfile, phenfile, ID_col, nullfil
 	#' AF.max = numeric specifying the maximum allele frequency for including variants in the analysis. Variants with MAF>AF.max will be removed.
 	#' MAC.max = numeric specifying the maximum minor allele count for including variants in the analysis. Variants with MAC>MAC.max will be removed.
 	#' use.weights = logical indicating whether to use external weights in the burden test. Only works for collapse = FALSE. A column called 'weight' should be included in the grouping file.
+	#' weight.beta = vector of length 2 with the parameters of the beta-distribution to be used for variant weighting based on the MAF in the dataset. 
+	#'		 Default is c(1,1) which is equivalent to the uniform distribution.
+	#'		 Not compatible with use.weight=T.
 
 	
 	if(collapse==TRUE){
-		burden.type <- "collapsing test"
+	        burden.type <- "collapsing test"
+	        weight.beta <- c(1,1)
+	        cat("Note: because analysis type is collapsing test, the c(1,1) beta distribution (uniform distribution) will be used.\n")
 	}else if(use.weights==F){
-		burden.type <- "regular burden"
+	        burden.type <- "regular burden"
 	}else{
-		burden.type <- "externally weighted burden test"	
+	      	burden.type <- "externally weighted burden test"
+	        weight.beta <- c(1,1)
+	        cat("Note: because weights are pre-specified, the c(1,1) beta distribution (uniform distribution) will be used.\n")
 	}
 	
-	cat(paste0('\n\nBurden test type is ', burden.type, ' and Pval method is ', burden.test, '.\n\n\n'))
+	cat(paste0('\n\nBurden test type is ', burden.type, ' and pvalue method is ', burden.test, ' with beta distribution of ', paste0("(", weight.beta[1], ",", weight.beta[2], ")"), '.\n\n\n'))
 	
 	# Samples
 	phen1<-fread(phenfile,header=T,data.table=F,sep="\t")
 	names(phen1)[which(colnames(phen1)==ID_col)]<-"sample.id"
-	id_int <- FALSE
+		id_int <- FALSE
 	if(class(phen1$sample.id)=='integer'){
 		id_int <- TRUE
 		class(phen1$sample.id) <- 'character'
 	}
 	samid0<-phen1$sample.id
-	
+
+
 	# Read the GDS file
 	gds <- seqOpen(gdsfile, allow.duplicate=T)
 	samples <- seqGetData(gds, "sample.id")
@@ -1114,36 +1533,38 @@ perform_burden_collapse <-function(gdsfile, groupfile, phenfile, ID_col, nullfil
 	rownames(combphen)<-combphen$sample.id
 	combphen2<-combphen[samples,]
 	if(id_int){class(combphen2$sample.id) <- 'integer'}
-	
+
 	# Construct a SeqVarData object
 	seqData <- SeqVarData(gds, sampleData=AnnotatedDataFrame(combphen2))
-	
+
 	# Filter the gdsfile
 	seqSetFilter(seqData, sample.id=samid0)
-	
+
 	# Annotation file
 	annot<-get(load(groupfile))
 	annot <- as.data.frame(annot)
 	#class(annot$chr) <- "numeric"
 	class(annot$pos) <- "numeric"
+
+
 	
 	# Grouping file; add weights if weights are selected
 	weights.found<-FALSE
 	if(use.weights){
-		if(!"weight" %in% colnames(annot)){
-			cat("\nWARNING: no column named 'weight' found in the grouping file; no weights will be applied.\n")
-			gr<-aggregateGRangesList(annot)
-		}else if(collapse){
-			cat("\nWARNING: weights for collapsing tests are not currently supported. No weights will be applied. Please set collapse to FALSE.\n")
-			gr<-aggregateGRangesList(annot)
-		}else{
-			#annot <- annot[,c("group_id", "chr", "pos", "ref", "alt", "weight")]
-			cat("\nuse.weights=T and 'weight' column found in grouping file; variant weights will be applied.\n")
-			gr<-aggregateGRangesList(annot)
-			weights.found<-TRUE
-		}
+	        if(!"weight" %in% colnames(annot)){
+	                cat("\nWARNING: no column named 'weight' found in the grouping file; no weights will be applied.\n")
+	                gr<-aggregateGRangesList(annot)
+	        }else if(collapse){
+	                cat("\nWARNING: weights for collapsing tests are not currently supported. No weights will be applied. Please set collapse to FALSE.\n")
+	                gr<-aggregateGRangesList(annot)
+	        }else{
+	              	#annot <- annot[,c("group_id", "chr", "pos", "ref", "alt", "weight")]
+	                cat("\nuse.weights=T and 'weight' column found in grouping file; variant weights will be applied.\n")
+	                gr<-aggregateGRangesList(annot)
+	                weights.found<-TRUE
+	        }
 	}else{
-		gr<-aggregateGRangesList(annot)
+	      	gr<-aggregateGRangesList(annot)
 	}
 	
 	# Create the iterator
@@ -1154,9 +1575,9 @@ perform_burden_collapse <-function(gdsfile, groupfile, phenfile, ID_col, nullfil
 	
 	# Perform assocation test; apply weights if provided
 	if(weights.found){
-		assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, MAC.max=MAC.max, test="Burden", burden.test=burden.test, vc.type=NULL, collapse = collapse, verbose=TRUE, use.weights=T, weight.user="weight")
+	        assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, MAC.max=MAC.max, test="Burden", burden.test=burden.test, vc.type=NULL, collapse = collapse, verbose=TRUE, use.weights=T, weight.user="weight", weight.beta=c(1,1))
 	}else{
-		assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, MAC.max=MAC.max, test="Burden", burden.test=burden.test, vc.type=NULL, collapse = collapse, verbose=TRUE, use.weight=F)
+	      	assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, MAC.max=MAC.max, test="Burden", burden.test=burden.test, vc.type=NULL, collapse = collapse, verbose=TRUE, use.weight=F, weight.beta=weight.beta)
 	}
 	
 	# Save results
@@ -1168,6 +1589,8 @@ perform_burden_collapse <-function(gdsfile, groupfile, phenfile, ID_col, nullfil
 # Kernell based gene-based tests			  
 kernell_variance_component <- function(gdsfile, groupfile, phenfile, ID_col, nullfile, outfile,
 				       AF.max=0.001, MAC.max, use.weights=FALSE, vc.test=c("SKAT", "SKATO", "SMMAT")){
+
+	num,gdsfile,groupfile,phenfile,nullfile,outfile,AF.max=0.001,MAC.max=Inf,use.weights=FALSE,test="SKAT_SAIGEGENEplus",vc.test="Score", SAIGEGENEplus_collapse_threshold=10,weight.beta=c(1,1)
 	#' 
 	#' gdsfile = string specifying the file name of the genetic dataset; dataset should be in SeqArray GDS format 
 	#' groupfile = string specifyinng the file name of the grouping file; the grouping file contains information of variants to be included in the analysis:
@@ -1202,17 +1625,19 @@ kernell_variance_component <- function(gdsfile, groupfile, phenfile, ID_col, nul
 	#' vc.test = vector of kernell-based tests to perform. 
 
 	
-	if("Burden" %in% vc.test){
-		stop("Burden type test is not supported by this function. For burden use 'perform_burden_collapse()'. Stopping run.")
-	} 
+	if("Burden" %in% test){
+	        stop("Burden type test is not supported by this function. For burden use 'hclofburden()'. Stopping run.")
+	}
 	
-	if(use.weights==FALSE){
+	if(use.weights==F){
 	        vc.type <- "regular weighted"
 	}else{
 	      	vc.type <- "externally weighted"
+	        weight.beta <- c(1,1)
+	        cat("Note: because weights are pre-specified, the c(1,1) beta distribution (uniform distribution) will be used.\n")
 	}
 	
-	cat(paste0('\n\nVariance component test type is ', vc.type, ' ', vc.test, '.\n\n\n'))
+	cat(paste0('\n\nVariance component test type is ', vc.type, ' ', test, ' using pvalue method ', vc.test, ' with beta distribution of ', paste0("(", weight.beta[1], ",", weight.beta[2], ")"), '.\n\n\n'))
 	
 	# Samples
 	phen1<-fread(phenfile,header=T,data.table=F,sep="\t")
@@ -1273,9 +1698,11 @@ kernell_variance_component <- function(gdsfile, groupfile, phenfile, ID_col, nul
 	
 	# Perfrom assocation test; apply weights if provided
 	if(weights.found){
-	        assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, test=vc.test, burden.test="Score", vc.type=vc.type, collapse = FALSE, verbose=TRUE, use.weights=T, weight.user="weight")
+	        assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, test=test, vc.test=vc.test, vc.type=vc.type, collapse = FALSE, verbose=TRUE, use.weights=T, weight.user="weight",
+	                                         SAIGEGENEplus_collapse_threshold=SAIGEGENEplus_collapse_threshold, weight.beta=c(1,1))
 	}else{
-	      	assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, test=vc.test, burden.test="Score", vc.type=vc.type, collapse = FALSE, verbose=TRUE, use.weight=F)
+	      	assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, test=test, vc.test=vc.test, vc.type=vc.type, collapse = FALSE, verbose=TRUE, use.weight=F,
+	                                         SAIGEGENEplus_collapse_threshold=SAIGEGENEplus_collapse_threshold, weight.beta=weight.beta)
 	}
 	
 	# Save results
