@@ -10,7 +10,7 @@ source('GENESIS_adaptation_source.R')
 # Burden and collapsing tests, options for SPA
 perform_burden_collapse <-function(gdsfile, groupfile, phenfile, ID_col, nullfile, outfile,
 				   burden.test=c("Score", "Score.SPA"), collapse=TRUE,
-				   AF.max=0.001, MAC.max=Inf, use.weights=FALSE){
+				   AF.max=0.001, MAC.max=Inf, use.weights=FALSE, weight.beta=c(1,1)){
 	#' 
 	#' gdsfile = string specifying the file name of the genetic dataset; dataset should be in SeqArray GDS format 
 	#' groupfile = string specifyinng the file name of the grouping file; the grouping file contains information of variants to be included in the analysis:
@@ -44,28 +44,36 @@ perform_burden_collapse <-function(gdsfile, groupfile, phenfile, ID_col, nullfil
 	#' AF.max = numeric specifying the maximum allele frequency for including variants in the analysis. Variants with MAF>AF.max will be removed.
 	#' MAC.max = numeric specifying the maximum minor allele count for including variants in the analysis. Variants with MAC>MAC.max will be removed.
 	#' use.weights = logical indicating whether to use external weights in the burden test. Only works for collapse = FALSE. A column called 'weight' should be included in the grouping file.
+	#' weight.beta = vector of length 2 with the parameters of the beta-distribution to be used for variant weighting based on the MAF in the dataset. 
+	#'		 Default is c(1,1) which is equivalent to the uniform distribution.
+	#'		 Not compatible with use.weight=T.
 
 	
 	if(collapse==TRUE){
-		burden.type <- "collapsing test"
+	        burden.type <- "collapsing test"
+	        weight.beta <- c(1,1)
+	        cat("Note: because analysis type is collapsing test, the c(1,1) beta distribution (uniform distribution) will be used.\n")
 	}else if(use.weights==F){
-		burden.type <- "regular burden"
+	        burden.type <- "regular burden"
 	}else{
-		burden.type <- "externally weighted burden test"	
+	      	burden.type <- "externally weighted burden test"
+	        weight.beta <- c(1,1)
+	        cat("Note: because weights are pre-specified, the c(1,1) beta distribution (uniform distribution) will be used.\n")
 	}
 	
-	cat(paste0('\n\nBurden test type is ', burden.type, ' and Pval method is ', burden.test, '.\n\n\n'))
+	cat(paste0('\n\nBurden test type is ', burden.type, ' and pvalue method is ', burden.test, ' with beta distribution of ', paste0("(", weight.beta[1], ",", weight.beta[2], ")"), '.\n\n\n'))
 	
 	# Samples
 	phen1<-fread(phenfile,header=T,data.table=F,sep="\t")
 	names(phen1)[which(colnames(phen1)==ID_col)]<-"sample.id"
-	id_int <- FALSE
+		id_int <- FALSE
 	if(class(phen1$sample.id)=='integer'){
 		id_int <- TRUE
 		class(phen1$sample.id) <- 'character'
 	}
 	samid0<-phen1$sample.id
-	
+
+
 	# Read the GDS file
 	gds <- seqOpen(gdsfile, allow.duplicate=T)
 	samples <- seqGetData(gds, "sample.id")
@@ -78,36 +86,38 @@ perform_burden_collapse <-function(gdsfile, groupfile, phenfile, ID_col, nullfil
 	rownames(combphen)<-combphen$sample.id
 	combphen2<-combphen[samples,]
 	if(id_int){class(combphen2$sample.id) <- 'integer'}
-	
+
 	# Construct a SeqVarData object
 	seqData <- SeqVarData(gds, sampleData=AnnotatedDataFrame(combphen2))
-	
+
 	# Filter the gdsfile
 	seqSetFilter(seqData, sample.id=samid0)
-	
+
 	# Annotation file
 	annot<-get(load(groupfile))
 	annot <- as.data.frame(annot)
 	#class(annot$chr) <- "numeric"
 	class(annot$pos) <- "numeric"
+
+
 	
 	# Grouping file; add weights if weights are selected
 	weights.found<-FALSE
 	if(use.weights){
-		if(!"weight" %in% colnames(annot)){
-			cat("\nWARNING: no column named 'weight' found in the grouping file; no weights will be applied.\n")
-			gr<-aggregateGRangesList(annot)
-		}else if(collapse){
-			cat("\nWARNING: weights for collapsing tests are not currently supported. No weights will be applied. Please set collapse to FALSE.\n")
-			gr<-aggregateGRangesList(annot)
-		}else{
-			#annot <- annot[,c("group_id", "chr", "pos", "ref", "alt", "weight")]
-			cat("\nuse.weights=T and 'weight' column found in grouping file; variant weights will be applied.\n")
-			gr<-aggregateGRangesList(annot)
-			weights.found<-TRUE
-		}
+	        if(!"weight" %in% colnames(annot)){
+	                cat("\nWARNING: no column named 'weight' found in the grouping file; no weights will be applied.\n")
+	                gr<-aggregateGRangesList(annot)
+	        }else if(collapse){
+	                cat("\nWARNING: weights for collapsing tests are not currently supported. No weights will be applied. Please set collapse to FALSE.\n")
+	                gr<-aggregateGRangesList(annot)
+	        }else{
+	              	#annot <- annot[,c("group_id", "chr", "pos", "ref", "alt", "weight")]
+	                cat("\nuse.weights=T and 'weight' column found in grouping file; variant weights will be applied.\n")
+	                gr<-aggregateGRangesList(annot)
+	                weights.found<-TRUE
+	        }
 	}else{
-		gr<-aggregateGRangesList(annot)
+	      	gr<-aggregateGRangesList(annot)
 	}
 	
 	# Create the iterator
@@ -118,9 +128,9 @@ perform_burden_collapse <-function(gdsfile, groupfile, phenfile, ID_col, nullfil
 	
 	# Perform assocation test; apply weights if provided
 	if(weights.found){
-		assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, MAC.max=MAC.max, test="Burden", burden.test=burden.test, vc.type=NULL, collapse = collapse, verbose=TRUE, use.weights=T, weight.user="weight")
+	        assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, MAC.max=MAC.max, test="Burden", burden.test=burden.test, vc.type=NULL, collapse = collapse, verbose=TRUE, use.weights=T, weight.user="weight", weight.beta=c(1,1))
 	}else{
-		assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, MAC.max=MAC.max, test="Burden", burden.test=burden.test, vc.type=NULL, collapse = collapse, verbose=TRUE, use.weight=F)
+	      	assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, MAC.max=MAC.max, test="Burden", burden.test=burden.test, vc.type=NULL, collapse = collapse, verbose=TRUE, use.weight=F, weight.beta=weight.beta)
 	}
 	
 	# Save results
@@ -131,7 +141,7 @@ perform_burden_collapse <-function(gdsfile, groupfile, phenfile, ID_col, nullfil
 
 # Kernell based gene-based tests			  
 kernell_variance_component <- function(gdsfile, groupfile, phenfile, ID_col, nullfile, outfile,
-				       AF.max=0.001, MAC.max, use.weights=FALSE, vc.test=c("SKAT", "SKATO", "SMMAT")){
+				       AF.max=0.001, MAC.max=Inf, use.weights=FALSE, vc.test=c("Score", "Score.SPA"), test=c("SKAT", "SKATO", "SMMAT", "SKAT_SAIGEGENEplus", "Extract"), SAIGEGENEplus_collapse_threshold=10,weight.beta=c(1,1))){
 	#' 
 	#' gdsfile = string specifying the file name of the genetic dataset; dataset should be in SeqArray GDS format 
 	#' groupfile = string specifyinng the file name of the grouping file; the grouping file contains information of variants to be included in the analysis:
@@ -166,17 +176,19 @@ kernell_variance_component <- function(gdsfile, groupfile, phenfile, ID_col, nul
 	#' vc.test = vector of kernell-based tests to perform. 
 
 	
-	if("Burden" %in% vc.test){
-		stop("Burden type test is not supported by this function. For burden use 'perform_burden_collapse()'. Stopping run.")
-	} 
+	if("Burden" %in% test){
+	        stop("Burden type test is not supported by this function. For burden use 'hclofburden()'. Stopping run.")
+	}
 	
-	if(use.weights==FALSE){
+	if(use.weights==F){
 	        vc.type <- "regular weighted"
 	}else{
 	      	vc.type <- "externally weighted"
+	        weight.beta <- c(1,1)
+	        cat("Note: because weights are pre-specified, the c(1,1) beta distribution (uniform distribution) will be used.\n")
 	}
 	
-	cat(paste0('\n\nVariance component test type is ', vc.type, ' ', vc.test, '.\n\n\n'))
+	cat(paste0('\n\nVariance component test type is ', vc.type, ' ', test, ' using pvalue method ', vc.test, ' with beta distribution of ', paste0("(", weight.beta[1], ",", weight.beta[2], ")"), '.\n\n\n'))
 	
 	# Samples
 	phen1<-fread(phenfile,header=T,data.table=F,sep="\t")
@@ -237,9 +249,11 @@ kernell_variance_component <- function(gdsfile, groupfile, phenfile, ID_col, nul
 	
 	# Perfrom assocation test; apply weights if provided
 	if(weights.found){
-	        assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, test=vc.test, burden.test="Score", vc.type=vc.type, collapse = FALSE, verbose=TRUE, use.weights=T, weight.user="weight")
+	        assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, test=test, vc.test=vc.test, vc.type=vc.type, collapse = FALSE, verbose=TRUE, use.weights=T, weight.user="weight",
+	                                         SAIGEGENEplus_collapse_threshold=SAIGEGENEplus_collapse_threshold, weight.beta=c(1,1))
 	}else{
-	      	assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, test=vc.test, burden.test="Score", vc.type=vc.type, collapse = FALSE, verbose=TRUE, use.weight=F)
+	      	assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, test=test, vc.test=vc.test, vc.type=vc.type, collapse = FALSE, verbose=TRUE, use.weight=F,
+	                                         SAIGEGENEplus_collapse_threshold=SAIGEGENEplus_collapse_threshold, weight.beta=weight.beta)
 	}
 	
 	# Save results
