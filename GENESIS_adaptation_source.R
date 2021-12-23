@@ -1588,9 +1588,10 @@ perform_burden_collapse <-function(gdsfile, groupfile, phenfile, ID_col, nullfil
 
 # Kernell based gene-based tests			  
 kernell_variance_component <- function(gdsfile, groupfile, phenfile, ID_col, nullfile, outfile,
-				       AF.max=0.001, MAC.max, use.weights=FALSE, vc.test=c("SKAT", "SKATO", "SMMAT")){
-
-	num,gdsfile,groupfile,phenfile,nullfile,outfile,AF.max=0.001,MAC.max=Inf,use.weights=FALSE,test="SKAT_SAIGEGENEplus",vc.test="Score", SAIGEGENEplus_collapse_threshold=10,weight.beta=c(1,1)
+				       AF.max=0.001, MAC.max=Inf, use.weights=FALSE, 
+				       vc.test=c("Score", "Score.SPA"), 
+				       test=c("SKAT", "SKATO", "SMMAT", "SKAT_SAIGEGENEplus", "ExtractKernelStatistics"), 
+				       SAIGEGENEplus_collapse_threshold=10, weight.beta=c(1,1))){
 	#' 
 	#' gdsfile = string specifying the file name of the genetic dataset; dataset should be in SeqArray GDS format 
 	#' groupfile = string specifyinng the file name of the grouping file; the grouping file contains information of variants to be included in the analysis:
