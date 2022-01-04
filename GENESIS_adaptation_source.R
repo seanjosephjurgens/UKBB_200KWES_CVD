@@ -669,6 +669,8 @@ testVariantSet_ExtractKernelStatistics_ScoresAndCovarianceMatrices_Sean <- funct
         } else {
                 V <- tcrossprod(Gtilde)
         }
+	
+	burden_out <- GENESIS:::.testGenoSingleVarScore(burdentilde, G = burden, resid = nullmod$resid, RSS0 = nullmod$RSS0)
         colnames(burden_out) <- paste0("Burden_", colnames(burden_out))
         single_var_out <- GENESIS:::.testGenoSingleVarScore(Gtilde, G = G, resid = nullmod$resid, RSS0 = nullmod$RSS0)
 
