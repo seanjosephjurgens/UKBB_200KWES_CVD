@@ -144,7 +144,7 @@ kernell_variance_component <- function(gdsfile, groupfile, phenfile, ID_col, nul
 				       AF.max=0.001, MAC.max=Inf, use.weights=FALSE, 
 				       vc.test=c("Score", "Score.SPA"), 
 				       test=c("SKAT", "SKATO", "SMMAT", "SKAT_SAIGEGENEplus", "ExtractKernelStatistics"), 
-				       SAIGEGENEplus_collapse_threshold=10, weight.beta=c(1,1))){
+				       SAIGEGENEplus_collapse_threshold=10, weight.beta=c(1,1)){
 	#' 
 	#' gdsfile = string specifying the file name of the genetic dataset; dataset should be in SeqArray GDS format 
 	#' groupfile = string specifyinng the file name of the grouping file; the grouping file contains information of variants to be included in the analysis:
