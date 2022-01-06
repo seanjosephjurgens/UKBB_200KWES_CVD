@@ -1271,7 +1271,7 @@ make_sparse_kinship_matrix_fromKING <- function(KINGfile, famfile, sparse_cutoff
 	
 	if(compute_unrel==TRUE){
 		relat <- king[king$value >= relat_cutoff,]
-		unrel_IDs <- removerelated(relat[,c(2,4)], fam[,1], random=FALSE, fixed=TRUE)
+		unrel_IDs <- removerelated(relat[,c(1,2)], fam[,1], random=FALSE, fixed=TRUE)
 		colnames(unrel_IDs) <- "ID"
 		write.table(unrel_IDs, file=outfile_unrel, col.names=T, row.names=F, quote=F, sep='\t')
 	}	
@@ -1323,7 +1323,7 @@ make_sparse_kinship_matrix_fromOther <- function(GRfile, ID1_col, ID2_col, GR_co
 	
 	if(compute_unrel){
 		relat <- GR[GR$value >= (relat_cutoff * estimate_scale),]
-		unrel_IDs <- removerelated(relat[,c(2,4)], fam[,1], random=FALSE, fixed=TRUE)
+		unrel_IDs <- removerelated(relat[,c(1,2)], fam[,1], random=FALSE, fixed=TRUE)
 		colnames(unrel_IDs) <- "ID"
 		write.table(unrel_IDs, file=outfile_unrel, col.names=T, row.names=F, quote=F, sep='\t')
 	}	
