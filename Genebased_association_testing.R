@@ -252,10 +252,10 @@ kernell_variance_component <- function(gdsfile, groupfile, phenfile, ID_col, nul
 	
 	# Perfrom assocation test; apply weights if provided
 	if(weights.found){
-	        assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, test=test, vc.test=vc.test, vc.type=vc.type, collapse = FALSE, verbose=TRUE, use.weights=T, weight.user="weight",
+	        assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, MAC.max=MAC.max, test=test, vc.test=vc.test, vc.type=vc.type, collapse = FALSE, verbose=TRUE, use.weights=T, weight.user="weight",
 	                                         SAIGEGENEplus_collapse_threshold=SAIGEGENEplus_collapse_threshold, weight.beta=c(1,1))
 	}else{
-	      	assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, test=test, vc.test=vc.test, vc.type=vc.type, collapse = FALSE, verbose=TRUE, use.weight=F,
+	      	assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, MAC.max=MAC.max, test=test, vc.test=vc.test, vc.type=vc.type, collapse = FALSE, verbose=TRUE, use.weight=F,
 	                                         SAIGEGENEplus_collapse_threshold=SAIGEGENEplus_collapse_threshold, weight.beta=weight.beta)
 	}
 	
