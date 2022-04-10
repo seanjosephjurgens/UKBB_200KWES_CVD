@@ -188,7 +188,11 @@ fit_nullmodel <- function(phenofile, ID_col, Outcome, IV_Rank_Norm=FALSE,
 	#Kinship matrix and run nullmodel
 	if(!is.null(relfile)){
 		relmat<-get(load(relfile))
-		relmat1<-relmat[as.character(phen1[,ID_col]), as.character(phen1[,ID_col])]
+		Idz <- as.character(phen1[,ID_col])  
+		if(length(which(!Idz %in% colnames(relmat)))>0){
+			Idz <- Idz[-(which(!Idz %in% colnames(relmat)))]
+		}
+		relmat1<-relmat[Idz, Idz]		
 
 		names(phen1)[which(colnames(phen1)==ID_col)]<-"scanID"
 		scanAnnot <- ScanAnnotationDataFrame(phen1)
