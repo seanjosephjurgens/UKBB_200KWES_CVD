@@ -85,7 +85,7 @@ perform_burden_collapse <-function(gdsfile, groupfile, phenfile, ID_col, nullfil
 	combphen<-rbind(phen1,misphen)
 	rownames(combphen)<-combphen$sample.id
 	combphen2<-combphen[samples,]
-	if(id_int){class(combphen2$sample.id) <- 'integer'}
+	#if(id_int){class(combphen2$sample.id) <- 'integer'}
 
 	# Construct a SeqVarData object
 	seqData <- SeqVarData(gds, sampleData=AnnotatedDataFrame(combphen2))
@@ -214,7 +214,7 @@ kernell_variance_component <- function(gdsfile, groupfile, phenfile, ID_col, nul
 	combphen<-rbind(phen1,misphen)
 	rownames(combphen)<-combphen$sample.id
 	combphen2<-combphen[samples,]
-	if(id_int){class(combphen2$sample.id) <- 'integer'}
+	#if(id_int){class(combphen2$sample.id) <- 'integer'}
 	
 	# Construct a SeqVarData object
 	seqData <- SeqVarData(gds, sampleData=AnnotatedDataFrame(combphen2))
