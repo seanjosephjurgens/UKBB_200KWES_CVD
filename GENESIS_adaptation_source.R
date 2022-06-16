@@ -244,6 +244,7 @@ recessive_strict_coding_Sean <- function(geno) {
                                 }
                         }
         }
+	geno <- geno/2
 	geno
 }
 
@@ -385,7 +386,7 @@ meta_analysis_combine_Sean <- function(study_path_vector, test=c("Burden", "SKAT
 
 ## create the burden score, than calls the appropriate single variant test function.
 ## can easily implement GxE interaction with the burden score... later!
-testVariantSetBurden_Sean <- function(nullmod, G, weights, burden.test, collapse){
+testVariantSetBurden_Sean <- function(nullmod, G, weights, burden.test, collapse, recessive){
     # multiply G by weights and compute burden
     if(is(G, "Matrix")){
         burden <- rowSums(G %*% Diagonal(x = weights))
@@ -396,6 +397,8 @@ testVariantSetBurden_Sean <- function(nullmod, G, weights, burden.test, collapse
     if(collapse){
         burden[which(burden>0)] <- 1
     }
+
+    
 
     # adjust burden for covariates and random effects
     Gtilde <- GENESIS:::calcGtilde(nullmod, burden)
@@ -735,7 +738,7 @@ testVariantSet_Sean <- function( nullmod, G, weights, freq, use.weights=F, var.i
               	burden.type <- "externally weighted burden"
         }
 	#cat('Running Burden test type', burden.type, 'using Pval method ', burden.test, '...\n')
-        out <- testVariantSetBurden_Sean(nullmod, G, weights, burden.test = burden.test, collapse = collapse)
+        out <- testVariantSetBurden_Sean(nullmod, G, weights, burden.test = burden.test, collapse = collapse, recessive = recessive)
     }
     if (test == "SKAT") {
         if(vc.test=="Score.SPA"){
@@ -912,7 +915,7 @@ setMethod("assocTestAggregate_Sean",
                   n.alt <- sum(geno, na.rm=TRUE)
 
                   # number of samples with observed alternate alleles > 0
-                  n.sample.alt <- sum(rowSums(geno, na.rm=TRUE) > 0)
+                  n.sample.alt <- sum(rowSums(geno, na.rm=TRUE) >= 0.5)
 
                   res[[i]] <- data.frame(n.site, n.alt, n.sample.alt)
                   res.var[[i]] <- cbind(var.info, n.obs, freq, weight)
@@ -933,8 +936,15 @@ setMethod("assocTestAggregate_Sean",
                       }
 		
 		      # if strict recessive analysis code for that
-		      if(recessive & recessive.model=="strict"){
-		          geno <- recessive_strict_coding_Sean(geno)
+		      if(recessive){
+			  if(recessive.model=="strict"){
+		          	geno <- recessive_strict_coding_Sean(geno)
+			  	n.alt <- sum(geno, na.rm=TRUE)
+			  	n.sample.alt <- sum(rowSums(geno, na.rm=TRUE) >= 0.5)
+			  }else{
+				geno <- geno/2
+			        n.alt <- n.sample.alt <- sum(rowSums(geno, na.rm=TRUE) >= 0.5)
+			  }
 		      }
 		
 
@@ -1541,7 +1551,6 @@ perform_burden_collapse <-function(gdsfile, groupfile, phenfile, ID_col, nullfil
 	#' weight.beta = vector of length 2 with the parameters of the beta-distribution to be used for variant weighting based on the MAF in the dataset. 
 	#'		 Default is c(1,1) which is equivalent to the uniform distribution.
 	#'		 Not compatible with use.weight=T.
-
 	
 	if(collapse==TRUE){
 	        burden.type <- "collapsing test"
@@ -1555,7 +1564,16 @@ perform_burden_collapse <-function(gdsfile, groupfile, phenfile, ID_col, nullfil
 	        cat("Note: because weights are pre-specified, the c(1,1) beta distribution (uniform distribution) will be used.\n")
 	}
 	
-	cat(paste0('\n\nBurden test type is ', burden.type, ' and pvalue method is ', burden.test, ' with beta distribution of ', paste0("(", weight.beta[1], ",", weight.beta[2], ")"), '.\n\n\n'))
+	cat(paste0('\n\nBurden test type is ', burden.type, ' and pvalue method is ', burden.test, ' with beta distribution of ', paste0("(", weight.beta[1], ",", weight.beta[2], ")"), '.\n'))
+	if(recessive){
+		cat('Using a ', recessive.model, 'recessive model.\n')
+		if(recessive.model=="putative"){	
+			if(use.weights | weight.beta!=c(1,1)){
+				stop('WARNING: putative recessive model does not allow for non-uniformly weighted alleles. Please use strict recessive model or use uniform weights. Stopping.\n')
+			}
+		}
+	}
+	cat('\n\n')
 	
 	# Samples
 	phen1<-fread(phenfile,header=T,data.table=F,sep="\t")
@@ -1637,7 +1655,7 @@ perform_burden_collapse <-function(gdsfile, groupfile, phenfile, ID_col, nullfil
 kernell_variance_component <- function(gdsfile, groupfile, phenfile, ID_col, nullfile, outfile,
 				       AF.max=0.001, MAC.max=Inf, use.weights=FALSE, 
 				       vc.test=c("Score", "Score.SPA"),
-				       recessive=FALSE, recessive.model=c("strict", "putative"),
+				       recessive=FALSE, 
 				       test=c("SKAT", "SKATO", "SMMAT", "SKAT_SAIGEGENEplus", "ExtractKernelStatistics"), 
 				       SAIGEGENEplus_collapse_threshold=10, weight.beta=c(1,1)){
 	#' 
@@ -1672,6 +1690,7 @@ kernell_variance_component <- function(gdsfile, groupfile, phenfile, ID_col, nul
 	#' MAC.max = numeric specifying the maximum minor allele count for including variants in the analysis. Variants with MAC>MAC.max will be removed.
 	#' use.weights = logical indicating whether to use external weights in the burden test. Only works for collapse = FALSE. A column called 'weight' should be included in the grouping file.
 	#' vc.test = vector of kernell-based tests to perform. 
+	#' recessive = logical specifying whether to perform a recessive analysis (where heterozygotes are ignored in the analysis, and homozygotes are coded as 1). Recessive model is always strict for variance components models.
 
 	
 	if("Burden" %in% test){
@@ -1686,7 +1705,15 @@ kernell_variance_component <- function(gdsfile, groupfile, phenfile, ID_col, nul
 	        cat("Note: because weights are pre-specified, the c(1,1) beta distribution (uniform distribution) will be used.\n")
 	}
 	
-	cat(paste0('\n\nVariance component test type is ', vc.type, ' ', test, ' using pvalue method ', vc.test, ' with beta distribution of ', paste0("(", weight.beta[1], ",", weight.beta[2], ")"), '.\n\n\n'))
+	if(recessive){
+		recessive.model="strict"	
+	}
+		
+	cat(paste0('\n\nVariance component test type is ', vc.type, ' ', test, ' using pvalue method ', vc.test, ' with beta distribution of ', paste0("(", weight.beta[1], ",", weight.beta[2], ")"), '.\n'))
+	if(recessive){
+		cat('Using a recessive model.\n')
+	}
+	cat('\n\n')
 	
 	# Samples
 	phen1<-fread(phenfile,header=T,data.table=F,sep="\t")
