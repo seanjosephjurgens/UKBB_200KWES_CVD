@@ -100,6 +100,7 @@ perform_burden_collapse <-function(gdsfile, groupfile, phenfile, ID_col, nullfil
 	#if(id_int){class(combphen2$sample.id) <- 'integer'}
 
 	# Construct a SeqVarData object
+	seqData <- SeqVarData(gds, sampleData=AnnotatedDataFrame(combphen2))
 	seq_ids <- seqGetData(gdsfile, var.name='sample.id')
 	class(combphen2$sample.id) <- class(seq_ids)
 
