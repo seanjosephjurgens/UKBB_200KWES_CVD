@@ -217,6 +217,36 @@ meanImpute_Sean <- function(geno, freqz) {
 	geno
 }
 
+#### Recode for recessive analysis
+recessive_strict_coding_Sean <- function(geno) {
+        nrowz <- nrow(geno)
+        ncolz <- ncol(geno)
+        try(dimz <- nrowz*ncolz, silent=T)
+        if(!is.na(dimz)){
+                if(dimz < 1500000000){
+                        het.idx <- which(geno<1.5)
+                        geno[het.idx] <- 0
+                }else{
+                      	for(jk in c(1:ncol(geno))){
+                                #cat('Busy with', jk, 'out of', ncol(geno), '...\n')
+                                het.rowz <- which(geno[,jk]<1.5)
+                                if(length(het.rowz)>0){
+                                        geno[het.rowz,jk] <- 0
+                                }
+                        }
+                }
+        }else{
+                        for(jk in c(1:ncol(geno))){
+                                #cat('Busy with', jk, 'out of', ncol(geno), '...\n')
+                                het.rowz <- which(geno[,jk]<1.5)
+                                if(length(het.rowz)>0){
+                                        geno[het.rowz,jk] <- 0
+                                }
+                        }
+        }
+	geno
+}
+
 ## Function to combine per-study results, produced by testVariantSet_ExtractKernelStatistics_ScoresAndCovarianceMatrices_Sean, for meta-analysis
 meta_analysis_combine_Sean <- function(study_path_vector, test=c("Burden", "SKAT", "SMMAT"), min_study_cmac=1){
 
@@ -683,7 +713,7 @@ testVariantSet_ExtractKernelStatistics_ScoresAndCovarianceMatrices_Sean <- funct
 
 testVariantSet_Sean <- function( nullmod, G, weights, freq, use.weights=F, var.info,
                             test = c("Burden", "SKAT", "fastSKAT", "SMMAT", "fastSMMAT", "SKATO", "SKAT_SAIGEGENEplus", "ExtractKernelStatistics"),
-                            burden.test = c("Score","Score.SPA"), collapse = FALSE,
+                            burden.test = c("Score","Score.SPA"), collapse = FALSE, recessive=FALSE, recessive.model = c("strict", "putative"),
                             vc.type = "regular weighted", vc.test=c("Score","Score.SPA"), SAIGEGENEplus_collapse_threshold=10,
                             neig = 200, ntrace = 500,
                             rho = seq(from = 0, to = 1, by = 0.1)){
@@ -778,7 +808,7 @@ setMethod("assocTestAggregate_Sean",
           function(gdsobj, null.model, AF.max=1, MAC.max=Inf, use.weights=F,
                    weight.beta=c(1,1), weight.user=NULL,
                    test=c("Burden", "SKAT", "fastSKAT", "SMMAT", "SKATO", "SKAT_SAIGEGENEplus", "ExtractKernelStatistics"),
-                   burden.test=c("Score", "Score.SPA"), collapse=FALSE,
+                   burden.test=c("Score", "Score.SPA"), collapse=FALSE, recessive=F, recessive.model=c("strict", "putative"), 
                    vc.test=c("Score", "Score.SPA"), vc.type="regular weighted", SAIGEGENEplus_collapse_threshold=10,
                    # pval.method=c("davies", "kuonen", "liu"),
                    neig = 200, ntrace = 500,
@@ -891,8 +921,8 @@ setMethod("assocTestAggregate_Sean",
                       res.covariance[[i]] <- NA
                   }
                   if (n.site > 0) {
-                      # mean impute missing values, unless it is collapsing test in which case we will impute to zero
-                      if(collapse){
+                      # mean impute missing values, unless it is collapsing test in which case we will impute to zero	
+		      if(collapse){
                           if (any(n.obs < nrow(geno))) {
                                 geno <- zeroImpute_Sean(geno, freq$freq)
                           }
@@ -901,10 +931,17 @@ setMethod("assocTestAggregate_Sean",
                                 geno <- meanImpute_Sean(geno, freq$freq)
                           }
                       }
+		
+		      # if strict recessive analysis code for that
+		      if(recessive & recessive.model=="strict"){
+		          geno <- recessive_strict_coding_Sean(geno)
+		      }
+		
 
                       # do the test
                       assoc <- testVariantSet_Sean(null.model, G=geno, use.weights=use.weights, weights=weight, freq=freq,
-                                              test=test, burden.test=burden.test, collapse=collapse, var.info=var.info,
+                                              test=test, burden.test=burden.test, collapse=collapse, recessive=recessive, recessive.model=recessive.model,
+					      var.info=var.info,
                                               vc.test=vc.test, vc.type=vc.type, SAIGEGENEplus_collapse_threshold=SAIGEGENEplus_collapse_threshold,
                                               neig = neig, ntrace = ntrace,
                                               rho=rho)
@@ -1462,7 +1499,7 @@ fit_nullmodel <- function(phenofile, ID_col, Outcome, IV_Rank_Norm=FALSE,
 	   
 # Burden and collapsing tests, options for SPA
 perform_burden_collapse <-function(gdsfile, groupfile, phenfile, ID_col, nullfile, outfile,
-				   burden.test=c("Score", "Score.SPA"), collapse=TRUE,
+				   burden.test=c("Score", "Score.SPA"), collapse=TRUE, recessive=FALSE, recessive.model=c("strict", "putative"),
 				   AF.max=0.001, MAC.max=Inf, use.weights=FALSE, weight.beta=c(1,1)){
 	#' 
 	#' gdsfile = string specifying the file name of the genetic dataset; dataset should be in SeqArray GDS format 
@@ -1494,6 +1531,10 @@ perform_burden_collapse <-function(gdsfile, groupfile, phenfile, ID_col, nullfil
 	#' outfile = string specifying the preferred output location for the gene-based results. 
 	#' burden.test = string specifying the type of test to perform: Either regular "Score" test or "Score.SPA" test.
 	#' collapse = logical specifying whether to perform a simple collapsing test (TRUE) or a regular burden test (FALSE).
+	#' recessive = logical specifying whether to perform a recessive analysis (where heterozygotes are ignored in the analysis, and homozygotes are coded as 1).
+	#' recessive.model = string specifying the type of recessive model. Only works for recessive=TRUE
+	#'		"strict" indicates that only true homozygotes are included as homozygotes
+	#'		"putative" indicates that putative compound heterozygotes are also included as homozygotes (NB this ignores potential phase, and therefore is putative)
 	#' AF.max = numeric specifying the maximum allele frequency for including variants in the analysis. Variants with MAF>AF.max will be removed.
 	#' MAC.max = numeric specifying the maximum minor allele count for including variants in the analysis. Variants with MAC>MAC.max will be removed.
 	#' use.weights = logical indicating whether to use external weights in the burden test. Only works for collapse = FALSE. A column called 'weight' should be included in the grouping file.
@@ -1581,9 +1622,9 @@ perform_burden_collapse <-function(gdsfile, groupfile, phenfile, ID_col, nullfil
 	
 	# Perform assocation test; apply weights if provided
 	if(weights.found){
-	        assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, MAC.max=MAC.max, test="Burden", burden.test=burden.test, vc.type=NULL, collapse = collapse, verbose=TRUE, use.weights=T, weight.user="weight", weight.beta=c(1,1))
+	        assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, MAC.max=MAC.max, test="Burden", burden.test=burden.test, vc.type=NULL, collapse = collapse, recessive = recessive, recessive.model = recessive.model, verbose=TRUE, use.weights=T, weight.user="weight", weight.beta=c(1,1))
 	}else{
-	      	assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, MAC.max=MAC.max, test="Burden", burden.test=burden.test, vc.type=NULL, collapse = collapse, verbose=TRUE, use.weight=F, weight.beta=weight.beta)
+	      	assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, MAC.max=MAC.max, test="Burden", burden.test=burden.test, vc.type=NULL, collapse = collapse, recessive = recessive, recessive.model = recessive.model, verbose=TRUE, use.weight=F, weight.beta=weight.beta)
 	}
 	
 	# Save results
@@ -1595,7 +1636,8 @@ perform_burden_collapse <-function(gdsfile, groupfile, phenfile, ID_col, nullfil
 # Kernell based gene-based tests			  
 kernell_variance_component <- function(gdsfile, groupfile, phenfile, ID_col, nullfile, outfile,
 				       AF.max=0.001, MAC.max=Inf, use.weights=FALSE, 
-				       vc.test=c("Score", "Score.SPA"), 
+				       vc.test=c("Score", "Score.SPA"),
+				       recessive=FALSE, recessive.model=c("strict", "putative"),
 				       test=c("SKAT", "SKATO", "SMMAT", "SKAT_SAIGEGENEplus", "ExtractKernelStatistics"), 
 				       SAIGEGENEplus_collapse_threshold=10, weight.beta=c(1,1)){
 	#' 
@@ -1706,9 +1748,11 @@ kernell_variance_component <- function(gdsfile, groupfile, phenfile, ID_col, nul
 	# Perfrom assocation test; apply weights if provided
 	if(weights.found){
 	        assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, MAC.max=MAC.max, test=test, vc.test=vc.test, vc.type=vc.type, collapse = FALSE, verbose=TRUE, use.weights=T, weight.user="weight",
+						 recessive = recessive, recessive.model = recessive.model,
 	                                         SAIGEGENEplus_collapse_threshold=SAIGEGENEplus_collapse_threshold, weight.beta=c(1,1))
 	}else{
 	      	assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, MAC.max=MAC.max, test=test, vc.test=vc.test, vc.type=vc.type, collapse = FALSE, verbose=TRUE, use.weight=F,
+						 recessive = recessive, recessive.model = recessive.model,
 	                                         SAIGEGENEplus_collapse_threshold=SAIGEGENEplus_collapse_threshold, weight.beta=weight.beta)
 	}
 	
