@@ -1509,7 +1509,7 @@ fit_nullmodel <- function(phenofile, ID_col, Outcome, IV_Rank_Norm=FALSE,
 	   
 # Burden and collapsing tests, options for SPA
 perform_burden_collapse <-function(gdsfile, groupfile, phenfile, ID_col, nullfile, outfile,
-				   burden.test=c("Score", "Score.SPA"), collapse=TRUE, recessive=FALSE, recessive.model=c("strict", "putative"),
+				   burden.test=c("Score", "Score.SPA"), collapse=TRUE, recessive=FALSE, recessive.model="strict",
 				   AF.max=0.001, MAC.max=Inf, use.weights=FALSE, weight.beta=c(1,1)){
 	#' 
 	#' gdsfile = string specifying the file name of the genetic dataset; dataset should be in SeqArray GDS format 
