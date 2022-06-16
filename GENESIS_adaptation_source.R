@@ -395,7 +395,7 @@ testVariantSetBurden_Sean <- function(nullmod, G, weights, burden.test, collapse
     }
 	
     if(recessive){
-        burden[which(burden)<0.75)] <- 0    
+        burden[which(burden<0.75)] <- 0    
     }
        
     if(collapse){
