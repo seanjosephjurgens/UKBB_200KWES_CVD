@@ -393,12 +393,14 @@ testVariantSetBurden_Sean <- function(nullmod, G, weights, burden.test, collapse
     }else{
 	burden <- colSums(t(G) * weights)
     }
-
+	
+    if(recessive){
+        burden[which(burden)<0.75)] <- 0    
+    }
+       
     if(collapse){
         burden[which(burden>0)] <- 1
     }
-
-    
 
     # adjust burden for covariates and random effects
     Gtilde <- GENESIS:::calcGtilde(nullmod, burden)
