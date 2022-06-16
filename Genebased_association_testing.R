@@ -9,7 +9,7 @@ source('GENESIS_adaptation_source.R')
 
 # Burden and collapsing tests, options for SPA
 perform_burden_collapse <-function(gdsfile, groupfile, phenfile, ID_col, nullfile, outfile,
-				   burden.test=c("Score", "Score.SPA"), collapse=TRUE,
+				   burden.test=c("Score", "Score.SPA"), collapse=TRUE, recessive=FALSE, recessive.model=c("strict", "putative"),
 				   AF.max=0.001, MAC.max=Inf, use.weights=FALSE, weight.beta=c(1,1)){
 	#' 
 	#' gdsfile = string specifying the file name of the genetic dataset; dataset should be in SeqArray GDS format 
@@ -41,13 +41,16 @@ perform_burden_collapse <-function(gdsfile, groupfile, phenfile, ID_col, nullfil
 	#' outfile = string specifying the preferred output location for the gene-based results. 
 	#' burden.test = string specifying the type of test to perform: Either regular "Score" test or "Score.SPA" test.
 	#' collapse = logical specifying whether to perform a simple collapsing test (TRUE) or a regular burden test (FALSE).
+	#' recessive = logical specifying whether to perform a recessive analysis (where heterozygotes are ignored in the analysis, and homozygotes are coded as 1).
+	#' recessive.model = string specifying the type of recessive model. Only works for recessive=TRUE
+	#'		"strict" indicates that only true homozygotes are included as homozygotes
+	#'		"putative" indicates that putative compound heterozygotes are also included as homozygotes (NB this ignores potential phase, and therefore is putative)
 	#' AF.max = numeric specifying the maximum allele frequency for including variants in the analysis. Variants with MAF>AF.max will be removed.
 	#' MAC.max = numeric specifying the maximum minor allele count for including variants in the analysis. Variants with MAC>MAC.max will be removed.
 	#' use.weights = logical indicating whether to use external weights in the burden test. Only works for collapse = FALSE. A column called 'weight' should be included in the grouping file.
 	#' weight.beta = vector of length 2 with the parameters of the beta-distribution to be used for variant weighting based on the MAF in the dataset. 
 	#'		 Default is c(1,1) which is equivalent to the uniform distribution.
 	#'		 Not compatible with use.weight=T.
-
 	
 	if(collapse==TRUE){
 	        burden.type <- "collapsing test"
@@ -61,7 +64,16 @@ perform_burden_collapse <-function(gdsfile, groupfile, phenfile, ID_col, nullfil
 	        cat("Note: because weights are pre-specified, the c(1,1) beta distribution (uniform distribution) will be used.\n")
 	}
 	
-	cat(paste0('\n\nBurden test type is ', burden.type, ' and pvalue method is ', burden.test, ' with beta distribution of ', paste0("(", weight.beta[1], ",", weight.beta[2], ")"), '.\n\n\n'))
+	cat(paste0('\n\nBurden test type is ', burden.type, ' and pvalue method is ', burden.test, ' with beta distribution of ', paste0("(", weight.beta[1], ",", weight.beta[2], ")"), '.\n'))
+	if(recessive){
+		cat('Using a ', recessive.model, 'recessive model.\n')
+		if(recessive.model=="putative"){	
+			if(use.weights | weight.beta!=c(1,1)){
+				stop('WARNING: putative recessive model does not allow for non-uniformly weighted alleles. Please use strict recessive model or use uniform weights. Stopping.\n')
+			}
+		}
+	}
+	cat('\n\n')
 	
 	# Samples
 	phen1<-fread(phenfile,header=T,data.table=F,sep="\t")
@@ -128,9 +140,9 @@ perform_burden_collapse <-function(gdsfile, groupfile, phenfile, ID_col, nullfil
 	
 	# Perform assocation test; apply weights if provided
 	if(weights.found){
-	        assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, MAC.max=MAC.max, test="Burden", burden.test=burden.test, vc.type=NULL, collapse = collapse, verbose=TRUE, use.weights=T, weight.user="weight", weight.beta=c(1,1))
+	        assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, MAC.max=MAC.max, test="Burden", burden.test=burden.test, vc.type=NULL, collapse = collapse, recessive = recessive, recessive.model = recessive.model, verbose=TRUE, use.weights=T, weight.user="weight", weight.beta=c(1,1))
 	}else{
-	      	assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, MAC.max=MAC.max, test="Burden", burden.test=burden.test, vc.type=NULL, collapse = collapse, verbose=TRUE, use.weight=F, weight.beta=weight.beta)
+	      	assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, MAC.max=MAC.max, test="Burden", burden.test=burden.test, vc.type=NULL, collapse = collapse, recessive = recessive, recessive.model = recessive.model, verbose=TRUE, use.weight=F, weight.beta=weight.beta)
 	}
 	
 	# Save results
@@ -142,7 +154,8 @@ perform_burden_collapse <-function(gdsfile, groupfile, phenfile, ID_col, nullfil
 # Kernell based gene-based tests			  
 kernell_variance_component <- function(gdsfile, groupfile, phenfile, ID_col, nullfile, outfile,
 				       AF.max=0.001, MAC.max=Inf, use.weights=FALSE, 
-				       vc.test=c("Score", "Score.SPA"), 
+				       vc.test=c("Score", "Score.SPA"),
+				       recessive=FALSE, 
 				       test=c("SKAT", "SKATO", "SMMAT", "SKAT_SAIGEGENEplus", "ExtractKernelStatistics"), 
 				       SAIGEGENEplus_collapse_threshold=10, weight.beta=c(1,1)){
 	#' 
@@ -177,6 +190,7 @@ kernell_variance_component <- function(gdsfile, groupfile, phenfile, ID_col, nul
 	#' MAC.max = numeric specifying the maximum minor allele count for including variants in the analysis. Variants with MAC>MAC.max will be removed.
 	#' use.weights = logical indicating whether to use external weights in the burden test. Only works for collapse = FALSE. A column called 'weight' should be included in the grouping file.
 	#' vc.test = vector of kernell-based tests to perform. 
+	#' recessive = logical specifying whether to perform a recessive analysis (where heterozygotes are ignored in the analysis, and homozygotes are coded as 1). Recessive model is always strict for variance components models.
 
 	
 	if("Burden" %in% test){
@@ -191,7 +205,15 @@ kernell_variance_component <- function(gdsfile, groupfile, phenfile, ID_col, nul
 	        cat("Note: because weights are pre-specified, the c(1,1) beta distribution (uniform distribution) will be used.\n")
 	}
 	
-	cat(paste0('\n\nVariance component test type is ', vc.type, ' ', test, ' using pvalue method ', vc.test, ' with beta distribution of ', paste0("(", weight.beta[1], ",", weight.beta[2], ")"), '.\n\n\n'))
+	if(recessive){
+		recessive.model="strict"	
+	}
+		
+	cat(paste0('\n\nVariance component test type is ', vc.type, ' ', test, ' using pvalue method ', vc.test, ' with beta distribution of ', paste0("(", weight.beta[1], ",", weight.beta[2], ")"), '.\n'))
+	if(recessive){
+		cat('Using a recessive model.\n')
+	}
+	cat('\n\n')
 	
 	# Samples
 	phen1<-fread(phenfile,header=T,data.table=F,sep="\t")
@@ -253,9 +275,11 @@ kernell_variance_component <- function(gdsfile, groupfile, phenfile, ID_col, nul
 	# Perfrom assocation test; apply weights if provided
 	if(weights.found){
 	        assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, MAC.max=MAC.max, test=test, vc.test=vc.test, vc.type=vc.type, collapse = FALSE, verbose=TRUE, use.weights=T, weight.user="weight",
+						 recessive = recessive, recessive.model = recessive.model,
 	                                         SAIGEGENEplus_collapse_threshold=SAIGEGENEplus_collapse_threshold, weight.beta=c(1,1))
 	}else{
 	      	assoc <- assocTestAggregate_Sean(iterator, nullmod, AF.max=AF.max, MAC.max=MAC.max, test=test, vc.test=vc.test, vc.type=vc.type, collapse = FALSE, verbose=TRUE, use.weight=F,
+						 recessive = recessive, recessive.model = recessive.model,
 	                                         SAIGEGENEplus_collapse_threshold=SAIGEGENEplus_collapse_threshold, weight.beta=weight.beta)
 	}
 	
@@ -264,39 +288,234 @@ kernell_variance_component <- function(gdsfile, groupfile, phenfile, ID_col, nul
 	seqClose(gds)
 }
 
-# Function for reading in the results for one phenotype, particularly handy for when analyses were split by chromosome.
-summarydata <- function(files, chrs, thre_cMAC=0, add_col=TRUE, add_col_name="Phenotype", add_col_value=NULL){
-	
-	#' files = vector of strings indicating the names of all the files belonging to the analysis of one phenotype
-	#' chrs = vector of strings or numerics indicating the chromosome numbers belonging to each of the included files
-	#' thre_cMAC = numeric indicating the cutoff for inclusion of gene-based results in the final results dataframe. Results with cMAC<thre_cMAC will be removed.
-	#' add_col = logical indicating whether to add additional information to the final result dataframe. For example, this could be the name of the analyzed phenotype. 'add_col_value' needs to be specified.
-	#' add_col_name = string specifying what to call the additional column. For example, 'Phenotype'.
-	#' add_col_value = string or numeric specifying what to fill into the new column. For example, 'Atrial_fibrillation_or_flutter'.
-	
-	sumres<-NULL
-	for (num in 1:length(files)){
-		outfile<-files[num]
-		chr0<-chrs[num]
-		res1<-get(load(outfile))
-		sum0<-res1$results
-		sum0$chr<-chr0
-		varinfo0<-res1$variantInfo
-		cMAC0<-NULL
-		mpos0<-NULL
-		for (genenum in c(1:length(varinfo0))){
-			cMAC1<-sum(varinfo0[[genenum]]$MAC)
-			mpos1<-mean(varinfo0[[genenum]]$pos)
-			cMAC0<-c(cMAC0,cMAC1)
-			mpos0<-c(mpos0,mpos1)
-		}
-		sum0$cMAC<-cMAC0
-		sum0$mpos<-mpos0
-		sum1<-subset(sum0,cMAC>=thre_cMAC)
-		sumres<-rbind(sumres,sum1)
-	}
-	if(add_col == TRUE & !is.null(add_col_value)){
-		sumres[,add_col_name] <- add_col_value
-	}
-	return(sumres)
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ALSE.\n")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+LL, collapse = collapse, verbose=TRUE, use.weights=T, weight.user="weight", weight.beta=c(1,1))
+
+LL, collapse = collapse, verbose=TRUE, use.weight=F, weight.beta=weight.beta)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ analysis:
+
+tional.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ covariates.
+
+ GENESIS or using our fit_nullmodel function.
+
+
+ed.
+ht' should be included in the grouping file.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+("(", weight.beta[1], ",", weight.beta[2], ")"), '.\n\n\n'))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+pse = FALSE, verbose=TRUE, use.weights=T, weight.user="weight",
+
+
+pse = FALSE, verbose=TRUE, use.weight=F,
+
+
+
+
+
+
+
+
+
+
+
+
+
+ill be removed.
+e analyzed phenotype. 'add_col_value' needs to be specified.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
