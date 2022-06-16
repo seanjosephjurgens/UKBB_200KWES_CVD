@@ -925,6 +925,7 @@ setMethod("assocTestAggregate_Sean",
                       cat('ExtractKernelStatistics number', i, '\n')
                       res.covariance[[i]] <- NA
                   }
+		  not_run <- FALSE
                   if (n.site > 0) {
                       # mean impute missing values, unless it is collapsing test in which case we will impute to zero	
 		      if(collapse){
@@ -942,31 +943,37 @@ setMethod("assocTestAggregate_Sean",
 			  if(recessive.model=="strict"){
 		          	geno <- recessive_strict_coding_Sean(geno)
 			  	n.alt <- sum(geno, na.rm=TRUE)
-			  	n.sample.alt <- sum(rowSums(geno, na.rm=TRUE) >= 0.5)
+			  	n.sample.alt <- sum(rowSums(geno, na.rm=TRUE) >= 0.75)
 			  }else{
 				geno <- geno/2
-			        n.alt <- n.sample.alt <- sum(rowSums(geno, na.rm=TRUE) >= 0.5)
+			        n.alt <- n.sample.alt <- sum(rowSums(geno, na.rm=TRUE) >= 0.75)
+			  }
+			  res[[i]][2] <- n.alt
+			  res[[i]][3] <- n.sample.alt
+			  if(n.alt==0){
+				  not_run <- TRUE
 			  }
 		      }
 		
-
-                      # do the test
-                      assoc <- testVariantSet_Sean(null.model, G=geno, use.weights=use.weights, weights=weight, freq=freq,
+                      if(!not_run){
+			   #do the test
+			   assoc <- testVariantSet_Sean(null.model, G=geno, use.weights=use.weights, weights=weight, freq=freq,
                                               test=test, burden.test=burden.test, collapse=collapse, recessive=recessive, recessive.model=recessive.model,
 					      var.info=var.info,
                                               vc.test=vc.test, vc.type=vc.type, SAIGEGENEplus_collapse_threshold=SAIGEGENEplus_collapse_threshold,
                                               neig = neig, ntrace = ntrace,
                                               rho=rho)
                                               # pval.method=pval.method)
-                      if(test == 'ExtractKernelStatistics'){
-                                res[[i]] <- cbind(res[[i]], assoc[['burden_out']], stringsAsFactors=FALSE)
-                                res.var[[i]]$variant.id <- paste0(res.var[[i]]$chr, ":", res.var[[i]]$pos, ":", res.var[[i]]$ref, ":", res.var[[i]]$alt)
-                                assoc[['single_var_out']]$variant.id <- rownames(assoc[['single_var_out']])
-                                res.var[[i]] <- merge(res.var[[i]], assoc[['single_var_out']], by="variant.id", all=T)
-                                res.covariance[[i]] <- assoc[['covariance_matrix']]
-                      }else{
-                            	res[[i]] <- cbind(res[[i]], assoc, stringsAsFactors=FALSE)
-                      }
+                      	   if(test == 'ExtractKernelStatistics'){
+                           	     	res[[i]] <- cbind(res[[i]], assoc[['burden_out']], stringsAsFactors=FALSE)
+                                	res.var[[i]]$variant.id <- paste0(res.var[[i]]$chr, ":", res.var[[i]]$pos, ":", res.var[[i]]$ref, ":", res.var[[i]]$alt)
+                                	assoc[['single_var_out']]$variant.id <- rownames(assoc[['single_var_out']])
+                                	res.var[[i]] <- merge(res.var[[i]], assoc[['single_var_out']], by="variant.id", all=T)
+                                	res.covariance[[i]] <- assoc[['covariance_matrix']]
+                      	   }else{
+                            		res[[i]] <- cbind(res[[i]], assoc, stringsAsFactors=FALSE)
+                      	   }
+		      }
                   }
 
                   if (verbose & n.iter > 1 & i %% set.messages == 0) {
