@@ -5,8 +5,7 @@ Nat Genet. in press. Summary statistics for this paper can be found at https://c
 
 In particular, adaptations of and wrappers around GENESIS are included in this repository that are optimized for large-scale sequencing analyses of databases with case-control imbalance.
 
-To use any of our functions, one only needs to source the 'GENESIS_adaptation_source.R' script, as all functions are included there. A list of dependencies is provided in that script as well.
-
-To note, this repository is under active development, and any suggestions are welcome. Also, we are happy to consider request regarding analyses in the paper not covered in this repository. 
+To use most of our functions applied in the paper, one only needs to source the 'GENESIS_adaptation_source.R' script, as all functions are included there. A list of dependencies is provided in that script as well. 
 
 
+To note, this repository is under active development, and any suggestions are welcome. Also, we are happy to consider request regarding analyses in the paper not covered in this repository. Please note: the v1.2 version is under development. Many additional scripts are included here.
