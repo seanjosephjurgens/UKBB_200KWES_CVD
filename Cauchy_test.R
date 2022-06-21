@@ -8,8 +8,8 @@
 CCT <- function(pvals, weights=NULL){
   #### check if there is NA
   if(sum(is.na(pvals)) > 0){
-    try(pvals <- pvals[-(which(is.na(pvals))), ])
-    try(pvals <- pvals[-(which(is.na(pvals)))])
+    try(pvals <- pvals[-(which(is.na(pvals))), ], quietly=T)
+    try(pvals <- pvals[-(which(is.na(pvals)))], quietly=T)
   }
   if(sum(is.na(pvals)) > 0){
     stop("ERROR: could not evaluate p-value entries properly, NAs remain in the data and function could not remove these.\n")
