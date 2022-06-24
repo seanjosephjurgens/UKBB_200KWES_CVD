@@ -1,4 +1,8 @@
+#!/usr/bin/env Rscript
+
 library(calibrate)
+library(qqman)
+
 multi_manhattan <- function(x, chr="CHR", bp="BP", p="P", snp="SNP", pch='pch',
                       col=c("gray10", "gray60"), chrlabs=NULL, 
                       suggestiveline=-log10(1e-5), genomewideline=-log10(5e-8), ltynum,
