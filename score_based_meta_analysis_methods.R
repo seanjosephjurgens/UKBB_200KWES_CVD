@@ -79,7 +79,22 @@ score_meta <- function(single_variant=F,
 	#source('/medpop/afib/sjurgens/Rscripts/association_source.R')
 	try(source('UKBB_200KWES_CVD/GENESIS_adaptation_source.R'))	
 	
-	score_meta_singlethread <- function(single_variant,study_summary_data_list,score_col_vec,pval_col_vec,score.se_col_vec,est_col_vec,est.se_col_vec,est_type,calc_raw_meta_fixedeffects_odds_ratio,recalc_variance_vec,mincarriers_col_vec,mincarriers_num_vec,meta_mincarriers_num,max_meta_maf,min_number_of_studies_contributing){		
+	score_meta_singlethread <- function(single_variant,
+					    study_summary_data_list,
+					    score_col_vec,
+					    pval_col_vec,
+					    score.se_col_vec,
+					    est_col_vec,
+					    est.se_col_vec,
+					    est_type,
+					    calc_raw_meta_fixedeffects_odds_ratio,
+					    recalc_variance_vec,
+					    mincarriers_col_vec,
+					    mincarriers_num_vec,
+					    meta_mincarriers_num,
+					    max_meta_maf,
+					    min_number_of_studies_contributing
+					    ){		
 		#Reformatting and merging files
 		cat('\nReformatting and merging files...\n')
 		meta_data <- NULL
