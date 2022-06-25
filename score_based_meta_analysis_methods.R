@@ -303,8 +303,10 @@ score_meta <- function(single_variant=F,
 			library(dplyr)
 			library(tidyr)
 			#source('/medpop/afib/sjurgens/Rscripts/association_source.R')
-			try(source('GENESIS_adaptation_source.R'))	
-
+			try(source('UKBB_200KWES_CVD/GENESIS_adaptation_source.R'))	
+			library(dplyr)
+			library(tidyr)
+			
 			split <- splitz[[split_num]]
 			study_summary_data_list2 <- list()
 			for(i in c(1:length(study_summary_data_list))){
