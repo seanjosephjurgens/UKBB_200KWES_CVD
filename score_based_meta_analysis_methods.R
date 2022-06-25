@@ -18,10 +18,10 @@ score_meta <- function(single_variant=F,
                        mincarriers_num_vec,
                        meta_mincarriers_num=10,
                        save_output=TRUE,
-                       outfile=outfile,
+                       outfile,
                        make_figures=TRUE,
                        min_number_of_studies_contributing=1,
-		       max_meta_maf=max_meta_maf,
+		       max_meta_maf,
 		       n.cores=1
                        ){
 	#' This is a code for performing score-based meta-analysis of single variant and gene-based burden results. It also allows for correction of the score variance using corrected P-values, for example P-values from the Saddle-Point-Aproximation.
