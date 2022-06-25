@@ -77,7 +77,7 @@ score_meta <- function(single_variant=F,
 	library(dplyr)
 	library(tidyr)
 	#source('/medpop/afib/sjurgens/Rscripts/association_source.R')
-	try(source('GENESIS_adaptation_source.R'))	
+	try(source('UKBB_200KWES_CVD/GENESIS_adaptation_source.R'))	
 	
 	score_meta_singlethread <- function(single_variant,study_summary_data_list,score_col_vec,pval_col_vec,score.se_col_vec,est_col_vec,est.se_col_vec,est_type,calc_raw_meta_fixedeffects_odds_ratio,recalc_variance_vec,mincarriers_col_vec,mincarriers_num_vec,meta_mincarriers_num,max_meta_maf,min_number_of_studies_contributing){		
 		#Reformatting and merging files
@@ -336,7 +336,7 @@ score_meta <- function(single_variant=F,
 		stopCluster(cl) 
 	}else{
 		meta_data <- score_meta_singlethread(single_variant=single_variant,
-			   			     study_summary_data_list=study_summary_data_list2,
+			   			     study_summary_data_list=study_summary_data_list,
 			   			     score_col_vec=score_col_vec,
 			   			     pval_col_vec=pval_col_vec,
 			   			     score.se_col_vec=score.se_col_vec,
