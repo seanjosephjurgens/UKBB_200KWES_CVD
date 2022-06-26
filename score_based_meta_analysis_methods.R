@@ -198,6 +198,8 @@ score_meta <- function(single_variant=F,
 		meta_data$P_Meta <- pchisq(((meta_data$Score_Meta^2) / meta_data$Variance_Meta), lower.tail=F, df=1)
 		meta_data <- meta_data[order(meta_data$P_Meta),]
 		
+		print.data.frame(head(meta_data))
+		
 		meta_data$N_studies_contributing <- 0
 		cols <- which(colnames(meta_data) %in% paste0(study_names, "_", mincarriers_col_vec))
 		meta_data$Direction_in_contributing_studies <- NA
