@@ -136,6 +136,7 @@ score_meta <- function(single_variant=F,
 		                }
 		        }
 		}
+		print.data.frame(head(meta_data))
 		
 		# Calculating meta-statistics
 		cat('\nCalculating meta-statistics using a Score-based meta-analysis approach...\n')
