@@ -204,7 +204,9 @@ score_meta <- function(single_variant=F,
 		}else{
 		      	meta_data$cMAC_meta <- cMAC_meta
 			print.data.frame(head(meta_data))
-		        #meta_data <- meta_data[meta_data$cMAC_Meta>=meta_mincarriers_num,]
+			cat('\tfilter by min cMAC of', meta_mincarriers_num, '...\n')
+			class(meta_data$cMAC_Meta) <- "numeric"
+		        meta_data <- meta_data[meta_data$cMAC_Meta>=meta_mincarriers_num,]
 		        colnames(meta_data)[ncol(meta_data)] <- paste0(mincarriers_col_vec[1], "_Meta")
 		}
 		meta_data$P_Meta <- pchisq(((meta_data$Score_Meta^2) / meta_data$Variance_Meta), lower.tail=F, df=1)
