@@ -185,6 +185,10 @@ score_meta <- function(single_variant=F,
 		              	cMAC_meta <- cMAC_meta + meta_data[,paste0(study_names[i], "_", mincarriers_col_vec[i])]
 		        }
 		}
+		
+		cat('\tnow after scoring...\n')
+		print.data.frame(head(meta_data))
+		
 		meta_data$Score_Meta <- score_meta
 		meta_data$Variance_Meta <- variance_meta
 		if(single_variant){
