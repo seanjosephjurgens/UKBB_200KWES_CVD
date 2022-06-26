@@ -143,7 +143,8 @@ score_meta <- function(single_variant=F,
 		convert_colz <- which(unlist(lapply(meta_data,class)) %in% c("numeric", "integer"))
 		cat('convert columns:', convert_colz, '\n')
 		meta_data <- meta_data %>% mutate_at(funs(replace_na(.,0)), .vars=convert_colz)
-			
+		
+		print.data.frame(head(meta_data))
 			
 		study_names <- names(study_summary_data_list)
 		meta_data$chr <- 'none'
