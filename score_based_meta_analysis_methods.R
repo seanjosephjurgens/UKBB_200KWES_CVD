@@ -172,6 +172,9 @@ score_meta <- function(single_variant=F,
 		}else{
 		      	cMAC_meta <- 0
 		}
+		
+		print.data.frame(head(meta_data))
+		
 		for(i in 1:length(names(study_summary_data_list))){
 		        score_meta <- score_meta + meta_data[,paste0(study_names[i], "_", score_col_vec[i])]
 		        variance_meta <- variance_meta + meta_data[,paste0(study_names[i], "_Variance")]
