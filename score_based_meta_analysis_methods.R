@@ -142,11 +142,10 @@ score_meta <- function(single_variant=F,
 		cat('\nCalculating meta-statistics using a Score-based meta-analysis approach...\n')
 		convert_colz1 <- which(unlist(lapply(meta_data,class)) %in% c("numeric", "integer"))
 		convert_colz2 <- which(!unlist(lapply(meta_data,class)) %in% c("numeric", "integer"))
-		cat('convert columns:', convert_colz, '\n')
 		meta_data <- meta_data %>% mutate_at(funs(replace_na(.,0)), .vars=convert_colz1)
 		meta_data <- meta_data %>% mutate_at(funs(replace_na(.,"0")), .vars=convert_colz2)
 		
-		print.data.frame(head(meta_data))
+		#print.data.frame(head(meta_data))
 			
 		study_names <- names(study_summary_data_list)
 		meta_data$chr <- 'none'
@@ -175,7 +174,7 @@ score_meta <- function(single_variant=F,
 		      	cMAC_meta <- 0
 		}
 		
-		print.data.frame(head(meta_data))
+		#print.data.frame(head(meta_data))
 		
 		for(i in 1:length(names(study_summary_data_list))){
 		        score_meta <- score_meta + meta_data[,paste0(study_names[i], "_", score_col_vec[i])]
