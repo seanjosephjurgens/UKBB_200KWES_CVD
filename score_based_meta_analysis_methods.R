@@ -187,11 +187,12 @@ score_meta <- function(single_variant=F,
 		        }
 		}
 		
+		meta_data$Score_Meta <- score_meta
+		meta_data$Variance_Meta <- variance_meta
+		
 		cat('\tnow after scoring...\n')
 		print.data.frame(head(meta_data))
 		
-		meta_data$Score_Meta <- score_meta
-		meta_data$Variance_Meta <- variance_meta
 		if(single_variant){
 		        meta_data$n.obs_Meta <- n.obs_meta
 		        meta_data$MAC_Meta <- MAC_meta
