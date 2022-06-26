@@ -141,7 +141,7 @@ score_meta <- function(single_variant=F,
 		# Calculating meta-statistics
 		cat('\nCalculating meta-statistics using a Score-based meta-analysis approach...\n')
 		convert_colz1 <- which(unlist(lapply(meta_data,class)) %in% c("numeric", "integer"))
-		convert_colz2 <- which(!unlist(lapply(meta_data,class)) %in% c("numeric", "integer"))
+		convert_colz2 <- which(!unlist(lapply(meta_data,class)) %in% c("numeric", "integer", "logical"))
 		meta_data <- meta_data %>% mutate_at(funs(replace_na(.,0)), .vars=convert_colz1)
 		meta_data <- meta_data %>% mutate_at(funs(replace_na(.,"0")), .vars=convert_colz2)
 		
