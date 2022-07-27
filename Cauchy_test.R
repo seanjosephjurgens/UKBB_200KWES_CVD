@@ -5,7 +5,11 @@
 ############################################################
 
 ## Cauchy functions
-CCT <- function(pvals, weights=NULL){
+CCT <- function(pvals, weights=NULL, log10p=FALSE){
+  if(log10p){
+    pvals <- 10^(-pvals)
+  }
+  
   #### check if there is NA
   if(sum(is.na(pvals)) > 0){
     try(pvals <- pvals[-(which(is.na(pvals))), ], silent=T)
@@ -58,6 +62,9 @@ CCT <- function(pvals, weights=NULL){
     pval <- (1/cct.stat)/pi
   }else{
     pval <- 1-pcauchy(cct.stat)
+  }
+  if(log10p){
+    pval <- -log10(pval)
   }
   return(pval)
 }
