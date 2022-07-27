@@ -5,7 +5,7 @@
 ############################################################
 
 ## Cauchy functions
-CCT <- function(pvals, weights=NULL, log10p=FALSE){
+CCT <- function(pvals, weights=NULL, log10p=FALSE, ignore0s=FALSE, ignore1s=FALSE){
   if(log10p){
     pvals <- 10^(-pvals)
   }
@@ -26,13 +26,20 @@ CCT <- function(pvals, weights=NULL, log10p=FALSE){
   #### check if there are p-values that are either exactly 0 or 1.
   is.zero <- (sum(pvals==0)>=1)
   is.one <- (sum(pvals==1)>=1)
-  if(is.zero && is.one){
+  if(is.zero && is.one & !(ignore0s | ignore1s)){
     stop("Cannot have both 0 and 1 p-values!")
   }
-  if(is.zero){
+  if(is.zero & ignore0s){
+    try(pvals <- pvals[-(which(pvals==0)), ], silent=T)
+    try(pvals <- pvals[-(which(pvals==0))], silent=T)
+  }else if(is.zero & !ignore0s){
     return(0)
   }
-  if(is.one){
+  if(is.one & ignore1s){
+    warning("There are p-values that are exactly 1! Ignoring those...")
+    try(pvals <- pvals[-(which(pvals==1)), ], silent=T)
+    try(pvals <- pvals[-(which(pvals==1))], silent=T)  
+  }else if(is.one & !ignore1s){
     warning("There are p-values that are exactly 1!")
     return(1)
   }
