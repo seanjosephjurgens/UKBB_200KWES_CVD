@@ -30,13 +30,13 @@ for(grouping in unique(group$group_id)){
                   '--', plinkfile_type, '  ', plinkfile, '  ',
                   '--extract varz_', grouping, '_freq', max_maf, '.tsv  ',
                   '--make-bed --out bfile_', grouping, '_freq', max_maf
-    )))
+    ), intern=T))
     try(system(paste0(plink_path, ' ',
                   ' --bfile  bfile_', grouping, '_freq', max_maf,
                   ' --max-maf ', max_maf, '  --max-mac ', max_mac, 
                   ' --export A --export-allele export-allele_', grouping, "_freq", max_maf, '.tsv',
                   ' --out text_', grouping, '_freq', max_maf
-    )))
+    ), intern=T))
     if(file.exists(paste0('text_', grouping, '_freq', max_maf, '.raw'))){
         library(data.table)
         library(dplyr)
