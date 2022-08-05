@@ -14,7 +14,10 @@ group <- group[group$group_id %in% groupings_to_extract, ]
 group <- group[,c("varid", "alt", "group_id")]
 group$varid <- paste0("chr", group$varid)
 
-
+if(max_mac==Inf){
+    max_mac <- 10000000000000
+}
+    
 final <- NULL
 num <- 1
 length_nums <- length(unique(group$group_id))
