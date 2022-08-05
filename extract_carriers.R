@@ -15,7 +15,7 @@ group <- group[,c("varid", "alt", "group_id")]
 group$varid <- paste0("chr", group$varid)
 
 if(max_mac==Inf){
-    max_mac <- 10000000000000
+    max_mac <- '10000000000000'
 }
     
 final <- NULL
