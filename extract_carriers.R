@@ -24,7 +24,7 @@ for(grouping in unique(group$group_id)){
     write.table(group[group$group_id==grouping, 'varid'], file=paste0('varz_', grouping, '_freq', max_maf, '.tsv'), col.names=F, row.names=F, quote=F)
     write.table(group[group$group_id==grouping,c("varid", "alt")], file=paste0('export-allele_', grouping, '_freq', max_maf, '.tsv'), col.names=F, row.names=F, quote=F)
     try(system(paste0(plink_path, ' ',
-                  '--', plinkfile_type, '  ', pfile, '  ',
+                  '--', plinkfile_type, '  ', plinkfile, '  ',
                   '--extract varz_', grouping, '_freq', max_maf, '.tsv  ',
                   '--make-bed --out bfile_', grouping, '_freq', max_maf
     )))
