@@ -40,12 +40,12 @@ for(grouping in unique(group$group_id)){
         ), intern=T))
     }else{
         try(system(paste0(plink_path, ' ',
-                  '--', plinkfile_type, '  ', plinkfile, '  --threads', num_cores, '  ',
+                  '--', plinkfile_type, '  ', plinkfile, '  --threads ', num_cores, '  ',
                   '--extract varz_', grouping, '_freq', max_maf, '.tsv  ',
                   '--make-bed --out bfile_', grouping, '_freq', max_maf
         ), intern=T))
         try(system(paste0(plink_path, ' ',
-                  ' --bfile  bfile_', grouping, '_freq', max_maf, '  --threads', num_cores, '  ',
+                  ' --bfile  bfile_', grouping, '_freq', max_maf, '  --threads ', num_cores, '  ',
                   ' --max-maf ', max_maf, '  --max-mac ', max_mac, 
                   ' --export A --export-allele export-allele_', grouping, "_freq", max_maf, '.tsv',
                   ' --out text_', grouping, '_freq', max_maf
