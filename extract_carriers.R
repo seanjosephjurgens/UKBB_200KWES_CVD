@@ -2,7 +2,7 @@
 
 source("UKBB_200KWES_CVD/GENESIS_adaptation_source.R")
 
-extract_carriers <- function(groupfile, groupings_to_extract, plinkfile, plinkfile_type="bfile", plink_path, collapse=TRUE, canonical=FALSE, max_maf=0.001, max_mac=Inf){
+extract_carriers <- function(groupfile, groupings_to_extract, plinkfile, plinkfile_type="bfile", plink_path, collapse=TRUE, canonical=FALSE, max_maf=0.001, max_mac=Inf, num_cores=NULL){
 
 group <- get(load(groupfile))
 group$varid <- paste0(group$chr, ":", group$pos, ":", group$ref, ":", group$alt)
@@ -26,17 +26,32 @@ for(grouping in unique(group$group_id)){
     num <- num+1
     write.table(group[group$group_id==grouping, 'varid'], file=paste0('varz_', grouping, '_freq', max_maf, '.tsv'), col.names=F, row.names=F, quote=F)
     write.table(group[group$group_id==grouping,c("varid", "alt")], file=paste0('export-allele_', grouping, '_freq', max_maf, '.tsv'), col.names=F, row.names=F, quote=F)
-    try(system(paste0(plink_path, ' ',
+    if(is.null(num_cores)){
+        try(system(paste0(plink_path, ' ',
                   '--', plinkfile_type, '  ', plinkfile, '  ',
                   '--extract varz_', grouping, '_freq', max_maf, '.tsv  ',
                   '--make-bed --out bfile_', grouping, '_freq', max_maf
-    ), intern=T))
-    try(system(paste0(plink_path, ' ',
+        ), intern=T))
+        try(system(paste0(plink_path, ' ',
                   ' --bfile  bfile_', grouping, '_freq', max_maf,
                   ' --max-maf ', max_maf, '  --max-mac ', max_mac, 
                   ' --export A --export-allele export-allele_', grouping, "_freq", max_maf, '.tsv',
                   ' --out text_', grouping, '_freq', max_maf
-    ), intern=T))
+        ), intern=T))
+    }else{
+        try(system(paste0(plink_path, ' ',
+                  '--', plinkfile_type, '  ', plinkfile, '  --threads', num_cores, '  ',
+                  '--extract varz_', grouping, '_freq', max_maf, '.tsv  ',
+                  '--make-bed --out bfile_', grouping, '_freq', max_maf
+        ), intern=T))
+        try(system(paste0(plink_path, ' ',
+                  ' --bfile  bfile_', grouping, '_freq', max_maf, '  --threads', num_cores, '  ',
+                  ' --max-maf ', max_maf, '  --max-mac ', max_mac, 
+                  ' --export A --export-allele export-allele_', grouping, "_freq", max_maf, '.tsv',
+                  ' --out text_', grouping, '_freq', max_maf
+        ), intern=T))
+
+    }
     if(file.exists(paste0('text_', grouping, '_freq', max_maf, '.raw'))){
         library(data.table)
         library(dplyr)
