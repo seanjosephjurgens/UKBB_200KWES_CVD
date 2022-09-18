@@ -74,7 +74,7 @@ for(grouping in unique(group$group_id)){
             final <- raw
         }else{
             raw <- raw[,c(1, (ncol(raw)))]
-            final <- merge(final, raw, by="FID", all=T)
+            final <- merge(final, raw, by="IID", all=T)
         }
     }
     try(system(paste0('rm bfile_', grouping, '_freq', max_maf, '.*')))
