@@ -73,7 +73,7 @@ for(grouping in unique(group$group_id)){
             raw <- raw[,c(1:6, (ncol(raw)))]
             final <- raw
         }else{
-            raw <- raw[,c(1, (ncol(raw)))]
+            raw <- raw[,c(2, (ncol(raw)))]
             final <- merge(final, raw, by="IID", all=T)
         }
     }
