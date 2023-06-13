@@ -1,3 +1,4 @@
+#UKBB_200KWES_CVD
 General functions used in the main analyses for Jurgens, Choi, Morrill et al (2022). Analysis of rare genetic variation underlying cardiometabolic diseases and traits among 200,000 individuals in the UK Biobank. Nat Genet. https://www.nature.com/articles/s41588-021-01011-w. Summary statistics for this paper can be found at https://cvd.hugeamp.org/downloads.html. The repos has been used for various subsequent rare variant analyses in various biobanks, for instance https://www.nature.com/articles/s41588-023-01342-w.
 
 In particular, adaptations of and wrappers around GENESIS are included in this repository that are optimized for large-scale sequencing analyses of databases with case-control imbalance.
