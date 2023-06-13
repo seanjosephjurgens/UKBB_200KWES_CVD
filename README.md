@@ -22,6 +22,11 @@ Then make sure that within R-scripts you want to run, you reference the un-tarre
 source("UKBB_200KWES_CVD/Cauchy_test.R")
 source("UKBB_200KWES_CVD/GENESIS_adaptation_source.R")
 ```
-
 ## Development
 To note, this repository is under active development, and any suggestions are welcome. Also, we are happy to consider request regarding analyses in the paper not covered in this repository. Please note: the v1.2 version is under development. Many additional scripts are included here.
+
+## Citations
+If you use any of the code in your work, please cite:
+```Jurgens, S.J., Choi, S.H., Morrill, V.N. et al. Analysis of rare genetic variation underlying cardiometabolic diseases and traits among 200,000 individuals in the UK Biobank. Nat Genet 54, 240–250 (2022). https://doi.org/10.1038/s41588-021-01011-w```
+and
+```Stephanie M Gogarten and others, Genetic association testing using the GENESIS R/Bioconductor package, Bioinformatics, Volume 35, Issue 24, December 2019, Pages 5346–5348, https://doi.org/10.1093/bioinformatics/btz567```
