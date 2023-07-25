@@ -708,7 +708,7 @@ testVariantSet_ExtractKernelStatistics_ScoresAndCovarianceMatrices_Sean <- funct
 	burden_out <- GENESIS:::.testGenoSingleVarScore(burdentilde, G = burden, resid = nullmod$resid, RSS0 = nullmod$RSS0)
         colnames(burden_out) <- paste0("Burden_", colnames(burden_out))
         single_var_out <- GENESIS:::.testGenoSingleVarScore(Gtilde, G = G, resid = nullmod$resid, RSS0 = nullmod$RSS0)
-	rownames(single_var_out)<-var.id.name 
+	rownames(single_var_out)<-single_var_out$variant.id 
         
 	out <- list(NULL)
         out[['burden_out']] <- burden_out
@@ -968,7 +968,7 @@ setMethod("assocTestAggregate_Sean",
                       	   if(test == 'ExtractKernelStatistics'){
                            	     	res[[i]] <- cbind(res[[i]], assoc[['burden_out']], stringsAsFactors=FALSE)
                                 	res.var[[i]]$variant.id <- paste0(res.var[[i]]$chr, ":", res.var[[i]]$pos, ":", res.var[[i]]$ref, ":", res.var[[i]]$alt)
-                                	assoc[['single_var_out']]$variant.id <- rownames(assoc[['single_var_out']])
+                                	#assoc[['single_var_out']]$variant.id <- rownames(assoc[['single_var_out']])
                                 	res.var[[i]] <- merge(res.var[[i]], assoc[['single_var_out']], by="variant.id", all=T)
                                 	res.covariance[[i]] <- assoc[['covariance_matrix']]
                       	   }else{
