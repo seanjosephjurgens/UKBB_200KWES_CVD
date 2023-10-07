@@ -144,7 +144,13 @@ score_meta <- function(single_variant=F,
 		#convert_colz2 <- which(!unlist(lapply(meta_data,class)) %in% c("numeric", "integer", "logical"))
 		#meta_data <- meta_data %>% mutate_at(funs(replace_na(.,0)), .vars=convert_colz1)
 		#meta_data <- meta_data %>% mutate_at(funs(replace_na(.,"0")), .vars=convert_colz2)
-		meta_data <- data.table::setnafill(meta_data, fill=0)
+		numeric_cols <- NULL
+		for(colcol in c(1:ncol(meta_data))){
+			if(is.numeric(meta_data[, colcol])){
+				numeric_cols <- c(numeric_cols, colcol)
+			}
+		}
+		meta_data[, numeric_cols] <- data.table::setnafill(meta_data[, numeric_cols], fill=0)
 		
 		#print.data.frame(head(meta_data))
 			
