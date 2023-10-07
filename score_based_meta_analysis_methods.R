@@ -376,8 +376,10 @@ score_meta <- function(single_variant=F,
 	                       					   min_number_of_studies_contributing=min_number_of_studies_contributing
 	                )
 			inter_meta_data
+			
 		}
-		stopCluster(cl) 
+		stopCluster(cl)
+		meta_data <- meta_data[order(meta_data$P_Meta), ]
 	}else{
 		meta_data <- score_meta_singlethread(single_variant=single_variant,
 			   			     study_summary_data_list=study_summary_data_list,
