@@ -338,7 +338,7 @@ score_meta <- function(single_variant=F,
 		require('foreach')
 		require('doParallel')
 	
-		cl <- makeCluster(n.cores[1]-1)
+		cl <- makeForkCluster(n.cores[1]-1, outfile="")
 		registerDoParallel(cl)
 		
 		meta_data <- foreach(split_num=c(1:length(splitz)), .inorder=FALSE, .combine='rbind') %dopar% {
