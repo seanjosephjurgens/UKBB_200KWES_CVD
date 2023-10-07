@@ -307,7 +307,7 @@ score_meta <- function(single_variant=F,
 			}else{
 		              	mod <- metagen(TE=estsz, seTE=est.sesz, studlab = studlabz,
 		                        sm = "MD",
-		                        level=0.95, level =0.95,
+		                        level=0.95,
 		                        fixed = T, random = F,
 		                        null.effect = 0)
 		                if(est_type=="logistic"){
