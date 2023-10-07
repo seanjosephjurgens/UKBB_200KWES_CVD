@@ -307,8 +307,8 @@ score_meta <- function(single_variant=F,
 			}else{
 		              	mod <- metagen(TE=estsz, seTE=est.sesz, studlab = studlabz,
 		                        sm = "MD",
-		                        level=0.95, level.comb =0.95,
-		                        comb.fixed = T, comb.random = F,
+		                        level=0.95, level =0.95,
+		                        fixed = T, random = F,
 		                        null.effect = 0)
 		                if(est_type=="logistic"){
 					meta_data[j, 'Raw_Meta_Estimate'] <- paste0(round(exp(mod$TE.fixed),2), " [", round(exp(mod$TE.fixed-1.96*mod$seTE.fixed),2), "; ", round(exp(mod$TE.fixed+1.96*mod$seTE.fixed),2), "]")
