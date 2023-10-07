@@ -473,6 +473,7 @@ score_meta <- function(single_variant=F,
 	                         suggestiveline = -log10(1/nrow(meta_data)),
 	                         cex.lab=1.5)
 	        }else{
+			cat(chrlabs)
 	              	manhattan(meta_data, bp="mpos", chr="chr", snp="Gene", p="P_Meta",
 	                         chrlabs=chrlabs, main="", ylim=c(0, ylimmax),
 	                         col=c("dodgerblue4", "firebrick4"),
