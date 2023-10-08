@@ -305,12 +305,17 @@ score_meta <- function(single_variant=F,
 					meta_data[j, 'Raw_Meta_Estimate'] <- paste0(round(estsz[1],2), " [", round((estsz[1]-1.96*est.sesz[1]),2), "; ", round((estsz[1]+1.96*est.sesz[1]),2), "]")
 				}
 			}else{
-		              	mod <- metagen(TE=estsz, seTE=est.sesz, studlab = studlabz,
+		              	mod <- NA
+				try(mod <- metagen(TE=estsz, seTE=est.sesz, studlab = studlabz,
 		                        sm = "MD",
 		                        level=0.95, level.ma=0.95, 
 		                        fixed = T, random = F,
 		                        null.effect = 0)
-		                if(est_type=="logistic"){
+		                )
+				if(is.na(mod)){
+					meta_data[j, 'Raw_Meta_Estimate'] <- "FAILED"
+					cat("WARNING: a failed estimation of a meta-effect estimate...\n")
+				}else if(est_type=="logistic"){
 					meta_data[j, 'Raw_Meta_Estimate'] <- paste0(round(exp(mod$TE.fixed),2), " [", round(exp(mod$TE.fixed-1.96*mod$seTE.fixed),2), "; ", round(exp(mod$TE.fixed+1.96*mod$seTE.fixed),2), "]")
 				}else{
 					meta_data[j, 'Raw_Meta_Estimate'] <- paste0(round(mod$TE.fixed,2), " [", round((mod$TE.fixed-1.96*mod$seTE.fixed),2), "; ", round((mod$TE.fixed+1.96*mod$seTE.fixed),2), "]")
