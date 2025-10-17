@@ -1,28 +1,59 @@
+#!/usr/bin/env Rscript
+
+##################################################################################################
+# Genotype-count based SPA-adjustment for meta-analysis resulrs, to adjust for case-control imbalance 
+##################################################################################################
+
+##### Expects METAL output from regular beta and se-based meta-analysis, with column 'MarkerName' for the variant
+##### Expects study-specific sum stats, including columns "ID", "BETA", "SE", "P_signed", "Ncarriers", "N_CASES", "N_CONTROLS"
+
+# Get command-line arguments
+args <- commandArgs(trailingOnly = TRUE)
+
+meta_metal <- args[1]
+study_sumstats_string <- args[2]
+study_sumstats_vec <- trimws(strsplit(study_sumstats_string, ",")[[1]])
+adjusted_meta_output <- args[3]
+p_cutoff_study <- args[4]
+p_cutoff_meta <- args[5]
+Cutoff.GC <- qnorm(1 - p_cutoff_study/2)
+Cutoff.meta <- qnorm(1 - p_cutoff_meta/2)
+
+if (!require("SPAtest", character.only = TRUE)) {
+  install.packages("SPAtest")
+}
+if (!require("parallel", character.only = TRUE)) {
+  install.packages("parallel")
+}
+if (!require("future.apply", character.only = TRUE)) {
+  install.packages("future.apply")
+}
+if (!require("progressr", character.only = TRUE)) {
+  install.packages("progressr")
+}
 library(SPAtest)
 library(parallel)
 library(future.apply)
 library(progressr)
 
-library(data.table)
-dat <- fread('META_8strata_both_sexes_EUR_v1_run1.tbl', stringsAsFactors = F, data.table=F)
-dat <- dat[which(grepl("canonical", dat$MarkerName)), ]
-nrow(dat)
-#[1] 1225562
+# Reading in METAL output
+dat <- data.table::fread(meta_metal, stringsAsFactors = F, data.table=F)
 
-for(study in c("UKB", "CCDG", "Geisinger", "TOPMed", "AoU", "MGB", "FOURIER", "DECLARE")){
-  message("Busy with ", study)
-  inter <- fread(paste0('../', study, '/', study, '_AF_RVAT_STEP2_v1_both_sexes_EUR_AF.regenie'), stringsAsFactors = F, data.table=F)
-  inter$P_signed <- sign(inter$BETA)*10^(-inter$LOG10P) 
-  inter <- inter[,c("ID", "BETA", "SE", "P_signed", "cMAC", "N_cases", "N_controls")]
-  colnames(inter)[c(2:ncol(inter))] <- paste0(study, "__", colnames(inter)[c(2:ncol(inter))])
+# Reading in and processing study-specific sum stats
+for(study_num in c(1:length(study_sumstats_vec))){
+  study <- study_sumstats_vec[study_num]
+  #message("Busy with ", study)
+  inter <- data.table::fread(study, stringsAsFactors = F, data.table=F)
+  inter$P_signed <- sign(inter$BETA)*inter$P 
+  inter <- inter[,c("ID", "BETA", "SE", "P_signed", "Ncarriers", "N_CASES", "N_CONTROLS")]
+  colnames(inter)[c(2:ncol(inter))] <- paste0("STUDY", study_num, "__", colnames(inter)[c(2:ncol(inter))])
   rm <- which(duplicated(inter$ID))
   if(length(rm)>0){inter <- inter[-rm, ]}
   dat <- merge(dat, inter, by.x='MarkerName', by.y='ID', all.x=T)
 }
 
-
 ## Define a meta-analysis function
-compute_P_SPAgc_fast <- function(df, row_index = NA) {
+compute_P_SPAgc_fast <- function(df, row_index = NA, Cutoff.GC, Cutoff.meta) {
   
   tryCatch({
     
@@ -51,7 +82,7 @@ compute_P_SPAgc_fast <- function(df, row_index = NA) {
     return(abs(SPAmeta(pvalue.GC = p_values, 
                        GCmat = cbind(count_het, count_hom), 
                        CCsize.GC = cbind(count_case, count_control), 
-                       Cutoff.GC = 1.644854, Cutoff.meta = 1.644854
+                       Cutoff.GC = Cutoff.GC, Cutoff.meta = Cutoff.meta
     )))
   }, error = function(e) {
     # Enhanced error message showing the problematic row index and data
@@ -61,44 +92,39 @@ compute_P_SPAgc_fast <- function(df, row_index = NA) {
 }
 
 # Prepare the data
-study_vec <- c("UKB", "CCDG", "Geisinger", "TOPMed", "AoU", "MGB", "FOURIER", "DECLARE")
+study_vec <- paste0(c("STUDY", c(1:(length(study_sumstats_vec)))))
 dat_filt <- dat[,which(gsub("__.*", "", colnames(dat)) %in% study_vec)]
 # requires each study has 4 variables in this order, ordered also by study
-dat_filt <- dat_filt[,which(gsub(".*__", "", colnames(dat_filt)) %in% c("P_signed", "cMAC", "N_cases", "N_controls"))]
+dat_filt <- dat_filt[,which(gsub(".*__", "", colnames(dat_filt)) %in% c("P_signed", "Ncarriers", "N_CASES", "N_CONTROLS"))]
 #dat[c(1:20),'P_SPAgc'] <- pbapply::pbapply(dat_filt[c(1:20), ], 1, function(row) {
 #  compute_P_SPAgc_fast(df = row)
 #})
 
-### Test on one row
-df_test <- as.vector(unlist(as.vector(dat_filt[249878,])))
-compute_P_SPAgc_fast(df=df_test)
-##
 # Use parallel processing to speed up the row-wise operation
-n_cores <- detectCores() - 1  # Use one less than the total number of cores to avoid overloading
+n_cores <- detectCores() - 2  # Use one less than the total number of cores to avoid overloading
 # Set up the parallel plan with multisession (each worker runs in its own process)
-plan(multisession, workers = detectCores() - 1)
+plan(multisession, workers = detectCores() - 2)
 
 # Enable progress handling with progressr
 handlers(global = TRUE)
 handlers("progress")
-# Compute adjusted P-values only for tests with nominal P<0.02
+
+# Compute adjusted P-values only for tests with nominal P<p_cutoff_meta
 dat$P_SPAgc <- dat$`P-value`
-dat_filt2 <- dat_filt[dat$`P-value`<0.05, ]
+dat_filt2 <- dat_filt[dat$`P-value`<p_cutoff_meta, ]
 with_progress({
   p <- progressor(along = c(1:nrow(dat_filt2)))  # Set the correct number of steps
-  dat[dat$`P-value`<0.05, 'P_SPAgc'] <- future_sapply(1:nrow(dat_filt2), function(i) {
+  dat[dat$`P-value`<p_cutoff_meta, 'P_SPAgc'] <- future_sapply(1:nrow(dat_filt2), function(i) {
     p(sprintf("x=%g", i))  # Update the progress bar for each iteration
-    compute_P_SPAgc_fast(df = dat_filt2[i, , drop = FALSE], row_index = i)
+    compute_P_SPAgc_fast(df = dat_filt2[i, , drop = FALSE], Cutoff.GC=Cutoff.GC, Cutoff.meta=Cutoff.meta, row_index = i)
   })
 })
 
-cor(dat$P_SPAgc, 
-    dat$`P-value`)
+#cor(dat$P_SPAgc, 
+#    dat$`P-value`)
 
-cor(dat[dat$`P-value`<0.05,'P_SPAgc'], 
-    dat[dat$`P-value`<0.05,'P-value'])
+#cor(dat[dat$`P-value`<p_cutoff_meta,'P_SPAgc'], 
+#    dat[dat$`P-value`<p_cutoff_meta,'P-value'])
 
-write.table(dat, file='META_8strata_both_sexes_EUR_v1_run1_P_SPAgc.tsv', col.names=T, row.names=F, quote=F, sep='\t')
-system('gzip META_8strata_both_sexes_EUR_v1_run1_P_SPAgc.tsv')
-
-dat <- fread('META_8strata_both_sexes_EUR_v1_run1_P_SPAgc.tsv.gz', stringsAsFactors=F, data.table=F)
+write.table(dat, file=adjusted_meta_output, col.names=T, row.names=F, quote=F, sep='\t')
+system(paste0('gzip ', adjusted_meta_output))
