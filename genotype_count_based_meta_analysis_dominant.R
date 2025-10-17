@@ -123,6 +123,7 @@ with_progress({
     compute_P_SPAgc_fast(df = dat_filt2[i, , drop = FALSE], Cutoff.GC=Cutoff.GC, Cutoff.meta=Cutoff.meta, row_index = i)
   })
 })
+dat$P_SPAgc <- abs(dat$P_SPAgc)
 
 #cor(dat$P_SPAgc, 
 #    dat$`P-value`)
