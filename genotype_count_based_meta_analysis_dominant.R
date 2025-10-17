@@ -102,7 +102,7 @@ compute_P_SPAgc_fast <- function(df, row_index = NA, Cutoff.GC, Cutoff.meta) {
 }
 
 # Prepare the data
-study_vec <- paste0(c("STUDY", c(1:(length(study_sumstats_vec)))))
+study_vec <- paste0("STUDY", c(1:(length(study_sumstats_vec))))
 print(study_vec)
 dat_filt <- dat[,which(gsub("__.*", "", colnames(dat)) %in% study_vec)]
 print(head(dat_filt))
