@@ -15,7 +15,7 @@ args <- commandArgs(trailingOnly = TRUE)
 
 meta_metal <- args[1]
 study_sumstats_string <- args[2]
-study_sumstats_vec <- trimws(strsplit(study_sumstats_string, ",")[[1]])
+study_sumstats_vec <- trimws(strsplit(study_sumstats_string, " ")[[1]])
 adjusted_meta_output <- args[3]
 p_cutoff_study <- args[4]
 p_cutoff_meta <- args[5]
