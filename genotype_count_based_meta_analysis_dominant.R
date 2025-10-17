@@ -134,7 +134,6 @@ with_progress({
   })
 })
 dat$P_SPAgc <- abs(dat$P_SPAgc)
-print(head(dat))
 
 #cor(dat$P_SPAgc, 
 #    dat$`P-value`)
@@ -145,6 +144,7 @@ print(head(dat))
 # Back-corrected of SE based on BETA and new P-value
 dat$StdErr_SPAgc <- dat$StdErr
 dat[dat$`P-value`<p_cutoff_meta, 'StdErr_SPAgc'] <- abs(dat[dat$`P-value`<p_cutoff_meta, 'Effect']) / (qnorm(1-dat[dat$`P-value`<p_cutoff_meta, 'P_SPAgc']/2)
+print(head(dat))
 
 dat <- dat[, (which(colnames(dat)%in%c(original_cols, 'P_SPAgc', 'StdErr_SPAgc')))]
 write.table(dat, file=adjusted_meta_output, col.names=T, row.names=F, quote=F, sep='\t')
