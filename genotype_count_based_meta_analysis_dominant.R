@@ -60,6 +60,7 @@ for(study_num in c(1:length(study_sumstats_vec))){
   if(length(rm)>0){inter <- inter[-rm, ]}
   dat <- merge(dat, inter, by.x='MarkerName', by.y='ID', all.x=T)
 }
+print(head(dat))
 
 ## Define a meta-analysis function
 compute_P_SPAgc_fast <- function(df, row_index = NA, Cutoff.GC, Cutoff.meta) {
@@ -103,11 +104,13 @@ compute_P_SPAgc_fast <- function(df, row_index = NA, Cutoff.GC, Cutoff.meta) {
 # Prepare the data
 study_vec <- paste0(c("STUDY", c(1:(length(study_sumstats_vec)))))
 dat_filt <- dat[,which(gsub("__.*", "", colnames(dat)) %in% study_vec)]
+print(head(dat_filt))
 # requires each study has 4 variables in this order, ordered also by study
 dat_filt <- dat_filt[,which(gsub(".*__", "", colnames(dat_filt)) %in% c("P_signed", "Ncarriers", "N_CASES", "N_CONTROLS"))]
 #dat[c(1:20),'P_SPAgc'] <- pbapply::pbapply(dat_filt[c(1:20), ], 1, function(row) {
 #  compute_P_SPAgc_fast(df = row)
 #})
+print(head(dat_filt))
 
 # Use parallel processing to speed up the row-wise operation
 n_cores <- detectCores() - 2  # Use one less than the total number of cores to avoid overloading
