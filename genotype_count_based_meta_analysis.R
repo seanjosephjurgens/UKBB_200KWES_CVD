@@ -38,6 +38,7 @@ library(progressr)
 
 # Reading in METAL output
 dat <- data.table::fread(meta_metal, stringsAsFactors = F, data.table=F)
+original_cols <- colnames(dat)
 
 # Reading in and processing study-specific sum stats
 for(study_num in c(1:length(study_sumstats_vec))){
@@ -126,5 +127,10 @@ with_progress({
 #cor(dat[dat$`P-value`<p_cutoff_meta,'P_SPAgc'], 
 #    dat[dat$`P-value`<p_cutoff_meta,'P-value'])
 
+# Back-corrected of SE based on BETA and new P-value
+dat$StdErr_SPAgc <- dat$StdErr
+dat[dat$`P-value`<p_cutoff_meta, 'StdErr_SPAgc'] <- abs(dat[dat$`P-value`<p_cutoff_meta, 'Effect']) / (qnorm(1-dat[dat$`P-value`<p_cutoff_meta, 'P_SPAgc']/2)
+
+dat <- dat[, (which(colnames(dat)%in%c(original_cols, 'P_SPAgc', 'StdErr_SPAgc')))]
 write.table(dat, file=adjusted_meta_output, col.names=T, row.names=F, quote=F, sep='\t')
 system(paste0('gzip ', adjusted_meta_output))
