@@ -12,6 +12,7 @@
 
 # Get command-line arguments
 args <- commandArgs(trailingOnly = TRUE)
+print(args)
 
 meta_metal <- args[1]
 study_sumstats_string <- args[2]
