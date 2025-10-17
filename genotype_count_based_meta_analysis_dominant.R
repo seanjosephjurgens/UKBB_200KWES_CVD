@@ -1,7 +1,10 @@
 #!/usr/bin/env Rscript
 
 ##################################################################################################
-# Genotype-count based SPA-adjustment for meta-analysis resulrs, to adjust for case-control imbalance 
+# Genotype-count based SPA-adjustment for meta-analysis results, to adjust for case-control imbalance 
+#### This version assumes a dominant association model (but is also a good approximation for 
+####                                                    very rare variants or collapsing rare variant
+####                                                    aggregate tests!
 ##################################################################################################
 
 ##### Expects METAL output from regular beta and se-based meta-analysis, with column 'MarkerName' for the variant
