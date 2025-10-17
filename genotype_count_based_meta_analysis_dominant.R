@@ -34,10 +34,14 @@ if (!require("future.apply", character.only = TRUE)) {
 if (!require("progressr", character.only = TRUE)) {
   install.packages("progressr")
 }
+if (!require("progress", character.only = TRUE)) {
+  install.packages("progress")
+}
 library(SPAtest)
 library(parallel)
 library(future.apply)
 library(progressr)
+library(progress)
 
 # Reading in METAL output
 dat <- data.table::fread(meta_metal, stringsAsFactors = F, data.table=F)
