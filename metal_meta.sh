@@ -49,7 +49,7 @@ LABEL Ncarriers as Ncarriers
 HEAD
 
   # Output prefix (let METAL add .TBL, .INFO, etc.)
-  printf 'OUTFILE %s .\n' "$out_prefix" .tbl
+  printf 'OUTFILE %s .tbl\n' "$out_prefix"
 
   # One PROCESS line per file
   for f in "${files[@]}"; do
