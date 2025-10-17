@@ -14,6 +14,9 @@ files=("$@")
 
 mkdir -p "$(dirname "$out_prefix")"
 
+# If METAL isn't on PATH, set the full path here:
+METAL_BIN="${METAL_BIN:-METAL/build/bin/metal}"
+
 # Build the METAL script and pipe it to METAL
 {
   cat <<'HEAD'
