@@ -17,8 +17,8 @@ meta_metal <- args[1]
 study_sumstats_string <- args[2]
 study_sumstats_vec <- trimws(strsplit(study_sumstats_string, " ")[[1]])
 adjusted_meta_output <- args[3]
-p_cutoff_study <- args[4]
-p_cutoff_meta <- args[5]
+p_cutoff_study <- as.numeric(args[4])
+p_cutoff_meta <- as.numeric(args[5])
 Cutoff.GC <- qnorm(1 - p_cutoff_study/2)
 Cutoff.meta <- qnorm(1 - p_cutoff_meta/2)
 
