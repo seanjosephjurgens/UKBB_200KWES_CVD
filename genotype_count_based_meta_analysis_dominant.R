@@ -48,6 +48,7 @@ for(study_num in c(1:length(study_sumstats_vec))){
   study <- study_sumstats_vec[study_num]
   #message("Busy with ", study)
   inter <- data.table::fread(study, stringsAsFactors = F, data.table=F)
+  inter$P <- 2 * pnorm(-abs(inter$BETA / inter$SE))
   inter$P_signed <- sign(inter$BETA)*inter$P 
   inter <- inter[,c("ID", "BETA", "SE", "P_signed", "Ncarriers", "N_CASES", "N_CONTROLS")]
   colnames(inter)[c(2:ncol(inter))] <- paste0("STUDY", study_num, "__", colnames(inter)[c(2:ncol(inter))])
