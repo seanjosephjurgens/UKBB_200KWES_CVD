@@ -145,7 +145,7 @@ dat$P_SPAgc <- abs(dat$P_SPAgc)
 dat$StdErr_SPAgc <- dat$StdErr
 dat[dat$`P-value` < p_cutoff_meta, "StdErr_SPAgc"] <-
   abs(dat[dat$`P-value` < p_cutoff_meta, "Effect"]) /
-  qnorm(1 - dat[dat$`P-value` < p_cutoff_meta, "P_SPAgc"] / 2)
+  qnorm(dat[dat$`P-value` < p_cutoff_meta, "P_SPAgc"] / 2, lower.tail = FALSE)
 print(head(dat))
 
 dat <- dat[, (which(colnames(dat)%in%c(original_cols, 'P_SPAgc', 'StdErr_SPAgc')))]
